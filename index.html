@@ -152,9 +152,9 @@
     </div>
   </footer>
 
-  <!-- ================= BALANCED OVERLAY POPUP FOR MOBILE & PC (FIXED TOP-RIGHT CROSS ✕) ================= -->
-  <div id="playerModal" onclick="if(event.target === this) closePlayerModal()" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-2.5 sm:p-5 md:p-8">
-    <div class="bg-[#14141e] border border-gray-800 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative">
+  <!-- ================= OVERLAY POPUP FOR MOBILE (100dvh) & PC (FIXED TOP-RIGHT CROSS ✕) ================= -->
+  <div id="playerModal" onclick="if(event.target === this) closePlayerModal()" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-5 md:p-8">
+    <div class="bg-[#14141e] sm:border border-gray-800 rounded-none sm:rounded-2xl max-w-5xl w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative">
       
       <!-- Sticky Top Bar with Fixed Top-Right Cross (✕) & Admin Quick Actions -->
       <div class="px-4 sm:px-6 py-3 bg-[#191924] border-b border-gray-800 flex items-center justify-between gap-2 flex-shrink-0 z-20">
@@ -164,36 +164,34 @@
         </div>
 
         <div class="flex items-center gap-2 flex-shrink-0">
-          <!-- Owner Quick Edit & Delete inside Popup (Only visible when Admin is unlocked) -->
+          <!-- Owner Quick Edit & Delete inside Popup -->
           <div id="modalAdminQuickActions" class="hidden items-center gap-1.5">
             <button type="button" id="modalQuickEditBtn" title="Quick Edit"
               class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/40 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition">
-              <i class="fa-solid fa-pen"></i> <span class="hidden sm:inline">Edit</span>
+              <i class="fa-solid fa-pen"></i> <span>Edit</span>
             </button>
             <button type="button" id="modalQuickDeleteBtn" title="Quick Delete"
               class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/40 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition">
-              <i class="fa-solid fa-trash"></i> <span class="hidden sm:inline">Delete</span>
+              <i class="fa-solid fa-trash"></i> <span>Delete</span>
             </button>
           </div>
 
           <!-- Top-Right Cross (✕) Close Button -->
           <button type="button" onclick="closePlayerModal()" aria-label="Close"
-            class="bg-gray-800 hover:bg-red-600 text-white w-9 h-9 rounded-full flex items-center justify-center text-base font-bold transition cursor-pointer shadow">
+            class="bg-red-600/20 hover:bg-red-600 text-white border border-red-500/40 w-9 h-9 rounded-full flex items-center justify-center text-base font-bold transition cursor-pointer shadow">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
       </div>
 
-      <!-- Unified Smooth Scrollable Body (2-Column Balanced Grid on Laptop, Clean Stack on Mobile) -->
+      <!-- Smooth Scrollable Body -->
       <div class="p-4 sm:p-6 overflow-y-auto flex-1">
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
           
-          <!-- Left Column (5/12 on Laptop): Balanced Video/Backdrop + Poster Info -->
+          <!-- Left Column (5/12 on Laptop) -->
           <div class="lg:col-span-5 space-y-3.5">
-            <!-- Balanced Aspect-Video Media Box (Not Oversized!) -->
             <div id="videoContainer" class="w-full aspect-video rounded-xl overflow-hidden border border-gray-800 bg-black flex items-center justify-center shadow-lg"></div>
 
-            <!-- Compact Poster + Quick Meta Card on Laptop -->
             <div class="flex items-center gap-3.5 bg-[#1a1a26] border border-gray-800/80 rounded-xl p-3">
               <img id="modalPosterImg" src="" alt="Poster"
                 onerror="this.src='https://via.placeholder.com/160x240/14141c/ffffff?text=Poster'"
@@ -209,7 +207,7 @@
             </div>
           </div>
 
-          <!-- Right Column (7/12 on Laptop): Generous Space for Title, Storyline & All Download Links -->
+          <!-- Right Column (7/12 on Laptop) -->
           <div class="lg:col-span-7 space-y-4 min-w-0">
             <div>
               <h2 id="modalTitle" class="text-xl sm:text-2xl md:text-3xl font-extrabold text-white leading-snug">
@@ -220,7 +218,6 @@
               </p>
             </div>
 
-            <!-- Download & Watch Links Section -->
             <div id="modalDownloadWrapper" class="pt-3 border-t border-gray-800 space-y-3">
               <h3 class="text-sm sm:text-base font-bold brand-text flex items-center gap-2">
                 <i class="fa-solid fa-cloud-arrow-down"></i>
@@ -238,7 +235,7 @@
 
   <!-- ================= RIGHT-SIDE 3-LINE (☰) DRAWER MENU ================= -->
   <div id="mobileMenuDrawer" onclick="if(event.target === this) closeMobileMenu()" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex justify-end">
-    <div class="bg-[#12121a] border-l border-gray-800 w-72 sm:w-80 h-full flex flex-col overflow-hidden shadow-2xl">
+    <div class="bg-[#12121a] border-l border-gray-800 w-72 sm:w-80 h-[100dvh] flex flex-col overflow-hidden shadow-2xl">
       <div class="px-5 py-4 border-b border-gray-800 flex items-center justify-between bg-[#171722]">
         <span class="font-bold text-base tracking-wide uppercase">Browse Menu</span>
         <button onclick="closeMobileMenu()" class="text-gray-400 hover:text-white text-xl cursor-pointer">
@@ -294,42 +291,43 @@
     </div>
   </div>
 
-  <!-- ================= ADMIN / CUSTOMIZE MODAL ================= -->
-  <div id="adminModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-5">
-    <div class="bg-[#13131a] border border-gray-800 rounded-2xl max-w-5xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
+  <!-- ================= ADMIN / CUSTOMIZE MODAL (100dvh MOBILE FIT + FIXED CROSS ✕) ================= -->
+  <div id="adminModal" class="fixed inset-0 z-50 hidden bg-black/85 backdrop-blur-sm flex items-center justify-center p-0 sm:p-5">
+    <div class="bg-[#13131a] sm:border border-gray-800 rounded-none sm:rounded-2xl max-w-5xl w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
       
-      <!-- Header -->
-      <div class="px-4 sm:px-6 py-3.5 border-b border-gray-800 flex items-center justify-between gap-2 bg-[#181822]">
+      <!-- Sticky Top Header with Guaranteed Visible Cross (✕) Button -->
+      <div class="px-4 sm:px-6 py-3 border-b border-gray-800 flex items-center justify-between gap-2 bg-[#181822] flex-shrink-0 z-20">
         <div class="flex items-center gap-2 min-w-0">
           <i class="fa-solid fa-shield-halved brand-text text-lg sm:text-xl flex-shrink-0"></i>
-          <h2 class="text-base sm:text-xl font-bold truncate">Owner Admin Panel</h2>
+          <h2 class="text-sm sm:text-xl font-bold truncate">Owner Admin Panel</h2>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <button onclick="logoutAdmin()" class="text-xs bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white px-2.5 py-1.5 rounded-lg cursor-pointer">
+          <button type="button" onclick="logoutAdmin()" class="text-xs bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white px-2.5 py-1.5 rounded-lg cursor-pointer">
             Logout
           </button>
-          <button onclick="closeAdminModal()" class="text-gray-400 hover:text-white text-xl px-1 cursor-pointer">
+          <button type="button" onclick="closeAdminModal()" aria-label="Close Admin Panel"
+            class="bg-gray-800 hover:bg-red-600 text-white w-9 h-9 rounded-full flex items-center justify-center text-base font-bold transition cursor-pointer">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
       </div>
 
       <!-- Mobile-Friendly 4 Tabs -->
-      <div class="grid grid-cols-2 sm:flex border-b border-gray-800 bg-[#101017] p-2 sm:p-0 gap-1.5 sm:gap-0">
-        <button onclick="switchAdminTab('movies')" id="tabBtn-movies"
-          class="admin-tab px-3 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border sm:border-0 sm:border-b-2 brand-border bg-[#1a1a24] sm:bg-transparent text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer">
+      <div class="grid grid-cols-2 sm:flex border-b border-gray-800 bg-[#101017] p-2 sm:p-0 gap-1.5 sm:gap-0 flex-shrink-0">
+        <button type="button" onclick="switchAdminTab('movies')" id="tabBtn-movies"
+          class="admin-tab px-3 py-2 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border sm:border-0 sm:border-b-2 brand-border bg-[#1a1a24] sm:bg-transparent text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer">
           <i class="fa-solid fa-film"></i> <span>Movies & Series</span>
         </button>
-        <button onclick="switchAdminTab('categories')" id="tabBtn-categories"
-          class="admin-tab px-3 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border border-gray-800 sm:border-0 sm:border-b-2 sm:border-transparent text-gray-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer">
+        <button type="button" onclick="switchAdminTab('categories')" id="tabBtn-categories"
+          class="admin-tab px-3 py-2 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border border-gray-800 sm:border-0 sm:border-b-2 sm:border-transparent text-gray-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer">
           <i class="fa-solid fa-layer-group"></i> <span>Categories & Types</span>
         </button>
-        <button onclick="switchAdminTab('settings')" id="tabBtn-settings"
-          class="admin-tab px-3 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border border-gray-800 sm:border-0 sm:border-b-2 sm:border-transparent text-gray-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer">
+        <button type="button" onclick="switchAdminTab('settings')" id="tabBtn-settings"
+          class="admin-tab px-3 py-2 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border border-gray-800 sm:border-0 sm:border-b-2 sm:border-transparent text-gray-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer">
           <i class="fa-solid fa-palette"></i> <span>Theme & Hero</span>
         </button>
-        <button onclick="switchAdminTab('backup')" id="tabBtn-backup"
-          class="admin-tab px-3 py-2.5 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border border-gray-800 sm:border-0 sm:border-b-2 sm:border-transparent text-gray-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer">
+        <button type="button" onclick="switchAdminTab('backup')" id="tabBtn-backup"
+          class="admin-tab px-3 py-2 sm:px-5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border border-gray-800 sm:border-0 sm:border-b-2 sm:border-transparent text-gray-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer">
           <i class="fa-solid fa-code"></i> <span>Backup & Export</span>
         </button>
       </div>
@@ -340,10 +338,14 @@
         <!-- ================= TAB 1: MOVIES & SERIES ================= -->
         <div id="tab-movies" class="admin-panel space-y-6">
           <form id="movieForm" onsubmit="saveMovie(event)" novalidate class="bg-[#1a1a24] p-4 sm:p-5 rounded-xl border border-gray-800 space-y-4">
-            <div class="flex items-center justify-between gap-2">
-              <h3 id="formHeading" class="font-bold text-sm sm:text-base brand-text">+ Add New Movie / Web Series</h3>
-              <button type="button" id="cancelEditBtn" onclick="resetMovieForm()" class="hidden text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded text-white cursor-pointer">
-                Cancel Edit
+            <!-- Form Header with Proper Wrapping & Always-Visible Cancel (✕) Button -->
+            <div class="flex items-start sm:items-center justify-between gap-2">
+              <h3 id="formHeading" class="font-bold text-sm sm:text-base brand-text min-w-0 flex-1 line-clamp-2">
+                + Add New Movie / Web Series
+              </h3>
+              <button type="button" id="cancelEditBtn" onclick="resetMovieForm()"
+                class="hidden flex-shrink-0 bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/40 text-xs font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5 cursor-pointer transition">
+                <i class="fa-solid fa-xmark"></i> <span>Cancel</span>
               </button>
             </div>
             <input type="hidden" id="editMovieId" />
@@ -403,9 +405,16 @@
               <div id="downloadGroupsBuilder" class="space-y-3"></div>
             </div>
 
-            <button type="submit" class="brand-bg text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">
-              <i class="fa-solid fa-check mr-1.5"></i> Save Content
-            </button>
+            <!-- Action Buttons Row (Save + Bottom Cancel Button when Editing) -->
+            <div class="flex flex-wrap items-center gap-3 pt-1">
+              <button type="submit" class="brand-bg text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition cursor-pointer">
+                <i class="fa-solid fa-check mr-1.5"></i> Save Content
+              </button>
+              <button type="button" id="cancelEditBtnBottom" onclick="resetMovieForm()"
+                class="hidden bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition inline-flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-xmark"></i> Cancel Edit
+              </button>
+            </div>
           </form>
 
           <!-- All Uploaded Content List -->
@@ -893,7 +902,7 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    // ================= MOVIE CARDS (WITH QUICK EDIT & DELETE WHEN ADMIN IS UNLOCKED) =================
+    // ================= MOVIE CARDS =================
     function createMovieCard(movie) {
       const adminQuickControls = isAdminUnlocked ? `
         <div class="absolute bottom-2 right-2 z-20 flex items-center gap-1.5" onclick="event.stopPropagation()">
@@ -1032,7 +1041,7 @@
       container.innerHTML = html || `<div class="text-center py-16 text-gray-500 text-sm">Abhi koi content available nahi hai.</div>`;
     }
 
-    // ================= BALANCED OVERLAY MODAL LOGIC (MOBILE & PC) =================
+    // ================= OVERLAY MODAL LOGIC =================
     function getYouTubeEmbedUrl(url) {
       if (!url) return "";
       const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -1057,7 +1066,6 @@
       document.getElementById("modalDesc").textContent = movie.desc || "";
       document.getElementById("modalPosterImg").src = movie.poster || movie.backdrop || "";
 
-      // Show Quick Edit & Delete buttons inside modal if Admin is unlocked
       const modalAdminBox = document.getElementById("modalAdminQuickActions");
       if (isAdminUnlocked) {
         modalAdminBox.classList.remove("hidden");
@@ -1069,7 +1077,6 @@
         modalAdminBox.classList.remove("flex");
       }
 
-      // Video Container: YouTube Trailer OR Backdrop Banner Fallback (Balanced size)
       const embedUrl = getYouTubeEmbedUrl(movie.youtube);
       const videoBox = document.getElementById("videoContainer");
       if (embedUrl) {
@@ -1084,7 +1091,6 @@
         videoBox.innerHTML = "";
       }
 
-      // Render All Download / Watch Link Groups Clearly
       const downloadWrapper = document.getElementById("modalDownloadWrapper");
       const groupsContainer = document.getElementById("modalDownloadGroups");
       let groups = Array.isArray(movie.downloadGroups) ? movie.downloadGroups : [];
@@ -1324,6 +1330,10 @@
 
       document.getElementById("formHeading").textContent = "Editing: " + (m.title || "Untitled");
       document.getElementById("cancelEditBtn").classList.remove("hidden");
+      document.getElementById("cancelEditBtn").classList.add("inline-flex");
+      document.getElementById("cancelEditBtnBottom").classList.remove("hidden");
+      document.getElementById("cancelEditBtnBottom").classList.add("inline-flex");
+
       switchAdminTab("movies");
       document.getElementById("movieForm").scrollIntoView({ behavior: "smooth" });
     }
@@ -1342,6 +1352,9 @@
       document.getElementById("editMovieId").value = "";
       document.getElementById("formHeading").textContent = "+ Add New Movie / Web Series";
       document.getElementById("cancelEditBtn").classList.add("hidden");
+      document.getElementById("cancelEditBtn").classList.remove("inline-flex");
+      document.getElementById("cancelEditBtnBottom").classList.add("hidden");
+      document.getElementById("cancelEditBtnBottom").classList.remove("inline-flex");
       formDownloadGroups = [];
       renderDownloadGroupsBuilder();
     }
