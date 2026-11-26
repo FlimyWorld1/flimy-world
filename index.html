@@ -1571,6 +1571,10 @@
             </button>
           </div>
 
+          <button type="button" id="modalShareBtn" onclick="shareCurrentMovie()" title="Share Direct Link" class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/40 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition">
+            <i class="fa-solid fa-share-nodes"></i> <span>Share</span>
+          </button>
+          
           <button type="button" onclick="closePlayerModal()" aria-label="Close" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/40 w-9 h-9 rounded-full flex items-center justify-center text-base font-bold transition cursor-pointer shadow">
             <i class="fa-solid fa-xmark"></i>
           </button>
@@ -2875,6 +2879,36 @@
                 <button type="button" onclick="addDownloadGroup()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer">
                   <i class="fa-solid fa-plus"></i> Add File / Link Group
                 </button>
+              </div>
+
+              <!-- AI Bulk Add Download Links (Visible when Editing Existing Content) -->
+              <div id="editAiBulkLinkBox" class="hidden bg-[#181824] border border-emerald-500/40 rounded-xl p-3 sm:p-3.5 space-y-2.5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h5 class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                      <i class="fa-solid fa-wand-magic-sparkles"></i>
+                      <span>AI Bulk Add Download Links</span>
+                    </h5>
+                    <p class="text-[11px] text-gray-400">Multiple links paste karein (e.g. <code class="text-gray-300">480p | 350MB | https://...</code> ya multi-line group). Existing links safe rahenge aur naye links neeche append honge.</p>
+                  </div>
+                </div>
+                <textarea id="editBulkLinksInput" rows="4" placeholder="Example:
+480p | 350MB | https://example.com/link1
+720p | 850MB | https://example.com/link2
+1080p | 1.5GB | https://example.com/link3
+2160p | 3.5GB | https://example.com/link4" class="w-full bg-[#101017] border border-gray-700 focus:border-emerald-500 rounded-lg p-2.5 text-xs font-mono leading-relaxed outline-none"></textarea>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div id="editBulkLinksStatus" class="text-[11px] text-gray-400"></div>
+                  <div class="flex items-center gap-2">
+                    <button type="button" onclick="clearEditBulkLinks()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer">
+                      Clear
+                    </button>
+                    <button type="button" onclick="processEditBulkLinks()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 shadow cursor-pointer transition">
+                      <i class="fa-solid fa-bolt"></i>
+                      <span>AI Detect &amp; Append Links</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div id="downloadGroupsBuilder" class="space-y-3"><p class="text-xs text-gray-500 italic">Abhi koi download/watch group add nahi kiya gaya hai. "+ Add File / Link Group" par click karein.</p></div>
@@ -7752,9 +7786,68 @@ https://example.com/720p" class="w-full bg-[#101017] border border-gray-700 focu
       return "";
     }
 
-    function openPlayerModal(id) {
+    let currentOpenedMovieId = null;
+
+    function getMovieIdFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const queryId = params.get("movie") || params.get("id");
+      if (queryId) return queryId;
+      if (window.location.hash && window.location.hash.startsWith("#movie=")) {
+        return decodeURIComponent(window.location.hash.slice(7));
+      }
+      return "";
+    }
+
+    function buildMovieDirectUrl(id) {
+      const url = new URL(window.location.href);
+      url.hash = "";
+      if (id) {
+        url.searchParams.set("movie", id);
+        url.searchParams.delete("id");
+      } else {
+        url.searchParams.delete("movie");
+        url.searchParams.delete("id");
+      }
+      return url.pathname + (url.search ? url.search : "");
+    }
+
+    function shareCurrentMovie() {
+      if (!currentOpenedMovieId) return;
+      const movie = appData.movies.find(m => m.id === currentOpenedMovieId);
+      const shareUrl = window.location.origin + buildMovieDirectUrl(currentOpenedMovieId);
+      const shareTitle = movie ? movie.title : (appData.settings.siteName || "FLIMY WORLD");
+
+      if (navigator.share) {
+        navigator.share({ title: shareTitle, url: shareUrl }).catch(() => {});
+        return;
+      }
+
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        const btn = document.getElementById("modalShareBtn");
+        if (btn) {
+          const orig = btn.innerHTML;
+          btn.innerHTML = `<i class="fa-solid fa-check"></i> <span>Copied!</span>`;
+          setTimeout(() => { btn.innerHTML = orig; }, 1800);
+        }
+      }).catch(() => {
+        prompt("Copy direct link:", shareUrl);
+      });
+    }
+
+    function openPlayerModal(id, options = {}) {
       const movie = appData.movies.find(m => m.id === id);
       if (!movie) return;
+
+      currentOpenedMovieId = movie.id;
+      const siteName = appData.settings.siteName || "FLIMY WORLD";
+      document.title = (movie.title || "Content") + " - " + siteName;
+
+      if (!options.skipHistory) {
+        const directPath = buildMovieDirectUrl(movie.id);
+        if (window.location.pathname + window.location.search !== directPath) {
+          window.history.pushState({ movieId: movie.id }, "", directPath);
+        }
+      }
 
       const mTypes = (movie.types && movie.types.length > 0) ? movie.types : (movie.type ? [movie.type] : []);
       const mCats = (movie.categories && movie.categories.length > 0) ? movie.categories : (movie.category ? [movie.category] : []);
@@ -7844,38 +7937,93 @@ https://example.com/720p" class="w-full bg-[#101017] border border-gray-700 focu
     function renderMoreLikeThis(currentMovie) {
       const section = document.getElementById("moreLikeThisSection");
       const grid = document.getElementById("moreLikeThisGrid");
-      const currentTags = getMovieAllTags(currentMovie).map(t => t.toLowerCase());
 
-      if (currentTags.length === 0) {
+      // Sirf Admin Panel ke "Select Custom Section Tags (OTT, Genre, Collections...)" ka use karein
+      const rawCurrentCustomTags = Array.isArray(currentMovie.customTags) ? currentMovie.customTags : [];
+      const currentCustomSet = new Set(
+        rawCurrentCustomTags.map(t => String(t || "").trim().toLowerCase()).filter(Boolean)
+      );
+
+      // Agar current content mein koi custom tag nahi hai toh section hide rakhein
+      if (currentCustomSet.size === 0) {
         section.classList.add("hidden");
         grid.innerHTML = "";
         return;
       }
 
-      const scored = appData.movies
-        .filter(m => m.id !== currentMovie.id)
-        .map(m => {
-          const mTags = getMovieAllTags(m).map(t => t.toLowerCase());
-          const matchCount = mTags.filter(t => currentTags.includes(t)).length;
-          return { movie: m, score: matchCount };
-        })
-        .filter(item => item.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
+      const seenMovieIds = new Set([currentMovie.id]);
+      const scored = [];
 
+      appData.movies.forEach(m => {
+        if (!m || !m.id || seenMovieIds.has(m.id)) return;
+
+        const candidateCustomTags = Array.isArray(m.customTags) ? m.customTags : [];
+        const uniqueCandidateSet = new Set(
+          candidateCustomTags.map(t => String(t || "").trim().toLowerCase()).filter(Boolean)
+        );
+
+        let matchCount = 0;
+        uniqueCandidateSet.forEach(tag => {
+          if (currentCustomSet.has(tag)) matchCount++;
+        });
+
+        // Kam se kam 1 custom tag match hona zaroori hai
+        if (matchCount >= 1) {
+          seenMovieIds.add(m.id);
+          scored.push({ movie: m, score: matchCount });
+        }
+      });
+
+      // Agar koi matching content nahi mila toh unrelated content show na karein
       if (scored.length === 0) {
         section.classList.add("hidden");
         grid.innerHTML = "";
         return;
       }
 
+      // Sabse zyada matching tags wale contents ko pehle dikhayein
+      scored.sort((a, b) => b.score - a.score);
+      const topMatches = scored.slice(0, 10);
+
       section.classList.remove("hidden");
-      grid.innerHTML = scored.map(item => createMovieCard(item.movie)).join("");
+      grid.innerHTML = topMatches.map(item => createMovieCard(item.movie)).join("");
     }
 
-    function closePlayerModal() {
+    function closePlayerModal(options = {}) {
+      const wasOpen = !document.getElementById("playerModal").classList.contains("hidden");
       document.getElementById("videoContainer").innerHTML = "";
       document.getElementById("playerModal").classList.add("hidden");
+      currentOpenedMovieId = null;
+
+      const siteName = appData.settings.siteName || "FLIMY WORLD";
+      document.title = siteName + " - Movies & Web Series";
+
+      if (!options.fromPopState && wasOpen) {
+        if (window.history.state && window.history.state.movieId) {
+          window.history.back();
+        } else if (getMovieIdFromUrl()) {
+          window.history.replaceState({}, document.title, buildMovieDirectUrl(""));
+        }
+      }
+    }
+
+    window.addEventListener("popstate", () => {
+      const movieId = getMovieIdFromUrl();
+      if (movieId) {
+        openPlayerModal(movieId, { skipHistory: true });
+      } else if (!document.getElementById("playerModal").classList.contains("hidden")) {
+        closePlayerModal({ fromPopState: true });
+      }
+    });
+
+    function checkDirectMovieRoute() {
+      const movieId = getMovieIdFromUrl();
+      if (movieId) {
+        const exists = appData.movies.some(m => m.id === movieId);
+        if (exists) {
+          openPlayerModal(movieId, { skipHistory: true });
+        }
+      }
     }
 
     // ================= ADMIN PANEL LOGIC =================
@@ -9254,6 +9402,214 @@ https://example.com/480p`;
       alert(editId ? "Content updated!" : "New content added!");
     }
 
+    function clearEditBulkLinks() {
+      const inp = document.getElementById("editBulkLinksInput");
+      const st = document.getElementById("editBulkLinksStatus");
+      if (inp) inp.value = "";
+      if (st) st.innerHTML = "";
+    }
+
+    function parseEditBulkLinks(rawText) {
+      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const groups = [];
+      const warnings = [];
+      let currentGroup = null;
+      let pendingBtnLabel = "";
+
+      const urlRegex = /(https?:\/\/[^\s|]+)/i;
+      const allUrlsRegex = /(https?:\/\/[^\s|]+)/gi;
+      const strictSizeRegex = /^\d+(?:\.\d+)?\s*(?:GB|MB|TB)$/i;
+      const inlineSizeRegex = /\b(\d+(?:\.\d+)?\s*(?:GB|MB|TB))\b/i;
+      const qualityHintRegex = /\b(2160p|4K|1080p|720p|480p|360p|WEB-?DL|WEBRip|BluRay|HDRip|HEVC|x265|x264|REMUX|10Bit|HQ|\.mkv|\.mp4|\.zip)\b/i;
+
+      lines.forEach((line, idx) => {
+        // Format 1: Pipe-separated line e.g. "480p | 350MB | https://example.com/link1"
+        if (line.includes("|")) {
+          const parts = line.split("|").map(p => p.trim()).filter(Boolean);
+          const urls = [];
+          let detectedSize = "";
+          const nameParts = [];
+
+          parts.forEach(part => {
+            if (/^https?:\/\//i.test(part)) {
+              urls.push(part);
+              return;
+            }
+            const cleanSize = part.replace(/[\[\]()]/g, "").trim();
+            if (!detectedSize && strictSizeRegex.test(cleanSize)) {
+              detectedSize = cleanSize;
+              return;
+            }
+            nameParts.push(part);
+          });
+
+          if (urls.length === 0) {
+            warnings.push(`Line ${idx + 1}: Valid download URL missing ("${line.slice(0, 40)}")`);
+            return;
+          }
+
+          let detectedName = nameParts.join(" | ").trim();
+          if (!detectedSize && detectedName) {
+            const embSize = detectedName.match(inlineSizeRegex);
+            if (embSize) detectedSize = embSize[1];
+          }
+
+          if (!detectedName || !detectedSize) {
+            const missing = [];
+            if (!detectedName) missing.push("Resolution/Quality");
+            if (!detectedSize) missing.push("File Size");
+            warnings.push(`Line ${idx + 1}: ${missing.join(" & ")} missing — blank chhoda gaya`);
+          }
+
+          currentGroup = {
+            name: detectedName,
+            size: detectedSize,
+            links: urls.map(u => ({ label: "Download", url: u }))
+          };
+          groups.push(currentGroup);
+          pendingBtnLabel = "";
+          return;
+        }
+
+        // Format 2: Explicit Key: Value labels (Size:, Button Name:, Link:)
+        const kvMatch = line.match(/^([a-zA-Z0-9\s\/+_-]{2,24})\s*:\s*(.*)$/);
+        if (kvMatch && !/^https?$/i.test(kvMatch[1].trim())) {
+          const key = kvMatch[1].trim().toLowerCase();
+          const val = kvMatch[2].trim();
+
+          if (/^(size|file\s*size)$/.test(key)) {
+            if (!currentGroup) {
+              currentGroup = { name: "", size: "", links: [] };
+              groups.push(currentGroup);
+            }
+            currentGroup.size = val;
+            return;
+          }
+          if (/^(button|button\s*name|btn|label)$/.test(key)) {
+            pendingBtnLabel = val;
+            return;
+          }
+          if (/^(link|download\s*link|url)$/.test(key) && urlRegex.test(val)) {
+            const u = val.match(urlRegex)[1];
+            if (!currentGroup) {
+              currentGroup = { name: "", size: "", links: [] };
+              groups.push(currentGroup);
+            }
+            currentGroup.links.push({ label: pendingBtnLabel || "Download", url: u });
+            pendingBtnLabel = "";
+            return;
+          }
+        }
+
+        // Format 3: Line containing URL(s) (supports multiple links under one group)
+        const lineUrls = line.match(allUrlsRegex);
+        if (lineUrls && lineUrls.length > 0) {
+          let remainder = line;
+          lineUrls.forEach(u => { remainder = remainder.replace(u, " "); });
+          remainder = remainder.replace(/[\[\]()]/g, " ").replace(/[:\-–]+/g, " ").trim();
+
+          let inlineSize = "";
+          const sMatch = remainder.match(inlineSizeRegex);
+          if (sMatch) {
+            inlineSize = sMatch[1];
+            remainder = remainder.replace(sMatch[0], " ").trim();
+          }
+
+          if (!currentGroup || (remainder && qualityHintRegex.test(remainder))) {
+            currentGroup = {
+              name: remainder,
+              size: inlineSize,
+              links: []
+            };
+            groups.push(currentGroup);
+            if (!currentGroup.name || !currentGroup.size) {
+              const missing = [];
+              if (!currentGroup.name) missing.push("Resolution/Quality");
+              if (!currentGroup.size) missing.push("File Size");
+              warnings.push(`Line ${idx + 1}: ${missing.join(" & ")} missing — blank chhoda gaya`);
+            }
+          } else {
+            if (inlineSize && !currentGroup.size) currentGroup.size = inlineSize;
+          }
+
+          const btnLabel = pendingBtnLabel || (remainder && remainder.length <= 28 && !qualityHintRegex.test(remainder) ? remainder : "Download");
+          lineUrls.forEach(u => {
+            currentGroup.links.push({ label: btnLabel, url: u });
+          });
+          pendingBtnLabel = "";
+          return;
+        }
+
+        // Format 4: Standalone File Size line
+        const cleanSizeLine = line.replace(/[\[\]()]/g, "").trim();
+        if (strictSizeRegex.test(cleanSizeLine)) {
+          if (!currentGroup) {
+            currentGroup = { name: "", size: "", links: [] };
+            groups.push(currentGroup);
+          }
+          currentGroup.size = cleanSizeLine;
+          return;
+        }
+
+        // Format 5: Quality / Resolution / File Name header line (starts a new group)
+        const inlineSize = line.match(inlineSizeRegex);
+        if (!currentGroup || currentGroup.links.length > 0 || currentGroup.name) {
+          currentGroup = {
+            name: line,
+            size: inlineSize ? inlineSize[1] : "",
+            links: []
+          };
+          groups.push(currentGroup);
+        } else {
+          currentGroup.name = line;
+          if (inlineSize && !currentGroup.size) currentGroup.size = inlineSize[1];
+        }
+      });
+
+      const validGroups = groups.filter(g => g.links && g.links.length > 0);
+      groups.forEach(g => {
+        if (!g.links || g.links.length === 0) {
+          warnings.push(`"${(g.name || g.size || "Group").slice(0, 35)}" ke neeche koi valid URL nahi mila — skip kiya gaya`);
+        }
+      });
+
+      return { groups: validGroups, warnings };
+    }
+
+    function processEditBulkLinks() {
+      const inp = document.getElementById("editBulkLinksInput");
+      const statusEl = document.getElementById("editBulkLinksStatus");
+      const rawText = (inp ? inp.value : "").trim();
+
+      if (!rawText) {
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="text-red-400 font-semibold">Pehle links ka data paste karein.</span>`;
+        }
+        return;
+      }
+
+      const { groups, warnings } = parseEditBulkLinks(rawText);
+
+      if (groups.length === 0) {
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="text-red-400 font-semibold">Koi valid download URL detect nahi hua. Format check karein.</span>`;
+        }
+        return;
+      }
+
+      // Strictly append below existing links without deleting or overwriting
+      formDownloadGroups.push(...groups);
+      renderDownloadGroupsBuilder();
+      if (inp) inp.value = "";
+
+      const totalLinks = groups.reduce((acc, g) => acc + (g.links ? g.links.length : 0), 0);
+      let msgHtml = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>${groups.length} group (${totalLinks} links) existing links ke neeche append ho gaye!</span>`;
+      if (warnings.length > 0) {
+        msgHtml += `<div class="text-amber-300 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${warnings.map(w => escapeHtml(w)).join(" • ")}</div>`;
+      }
+      if (statusEl) statusEl.innerHTML = msgHtml;
+    }
+
     function editMovie(id) {
       const m = appData.movies.find(item => item.id === id);
       if (!m) return;
@@ -9274,6 +9630,12 @@ https://example.com/480p`;
 
       formDownloadGroups = structuredClone(Array.isArray(m.downloadGroups) ? m.downloadGroups : []);
       renderDownloadGroupsBuilder();
+
+      const editBulkBox = document.getElementById("editAiBulkLinkBox");
+      if (editBulkBox) {
+        editBulkBox.classList.remove("hidden");
+        clearEditBulkLinks();
+      }
 
       document.getElementById("formHeading").textContent = "Editing: " + (m.title || "Untitled");
       document.getElementById("cancelEditBtn").classList.remove("hidden");
@@ -9303,6 +9665,287 @@ https://example.com/480p`;
       document.getElementById("cancelEditBtn").classList.remove("inline-flex");
       document.getElementById("cancelEditBtnBottom").classList.add("hidden");
       document.getElementById("cancelEditBtnBottom").classList.remove("inline-flex");
+      const editBulkBox = document.getElementById("editAiBulkLinkBox");
+      if (editBulkBox) {
+        editBulkBox.classList.add("hidden");
+        clearEditBulkLinks();
+      }
+      formSelectedCategories = [];
+      formSelectedTypes = [];
+      formSelectedCustomTags = [];
+      renderAdminFormMultiSelects();
+      formDownloadGroups = [];
+      renderDownloadGroupsBuilder();
+    }
+
+    function clearEditBulkLinks() {
+      const inp = document.getElementById("editBulkLinksInput");
+      const st = document.getElementById("editBulkLinksStatus");
+      if (inp) inp.value = "";
+      if (st) st.innerHTML = "";
+    }
+
+    function parseEditBulkLinks(rawText) {
+      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const groups = [];
+      const warnings = [];
+      let currentGroup = null;
+      let pendingBtnLabel = "";
+
+      const urlRegex = /(https?:\/\/[^\s|]+)/i;
+      const allUrlsRegex = /(https?:\/\/[^\s|]+)/gi;
+      const strictSizeRegex = /^\d+(?:\.\d+)?\s*(?:GB|MB|TB)$/i;
+      const inlineSizeRegex = /\b(\d+(?:\.\d+)?\s*(?:GB|MB|TB))\b/i;
+      const qualityHintRegex = /\b(2160p|4K|1080p|720p|480p|360p|WEB-?DL|WEBRip|BluRay|HDRip|HEVC|x265|x264|REMUX|10Bit|HQ|\.mkv|\.mp4|\.zip)\b/i;
+
+      lines.forEach((line, idx) => {
+        // Format 1: Pipe-separated line e.g. "480p | 350MB | https://example.com/link1"
+        if (line.includes("|")) {
+          const parts = line.split("|").map(p => p.trim()).filter(Boolean);
+          const urls = [];
+          let detectedSize = "";
+          const nameParts = [];
+
+          parts.forEach(part => {
+            if (/^https?:\/\//i.test(part)) {
+              urls.push(part);
+              return;
+            }
+            const cleanSize = part.replace(/[\[\]()]/g, "").trim();
+            if (!detectedSize && strictSizeRegex.test(cleanSize)) {
+              detectedSize = cleanSize;
+              return;
+            }
+            nameParts.push(part);
+          });
+
+          if (urls.length === 0) {
+            warnings.push(`Line ${idx + 1}: Valid download URL missing ("${line.slice(0, 40)}")`);
+            return;
+          }
+
+          let detectedName = nameParts.join(" | ").trim();
+          if (!detectedSize && detectedName) {
+            const embSize = detectedName.match(inlineSizeRegex);
+            if (embSize) detectedSize = embSize[1];
+          }
+
+          if (!detectedName || !detectedSize) {
+            const missing = [];
+            if (!detectedName) missing.push("Resolution/Quality");
+            if (!detectedSize) missing.push("File Size");
+            warnings.push(`Line ${idx + 1}: ${missing.join(" & ")} missing — blank chhoda gaya`);
+          }
+
+          currentGroup = {
+            name: detectedName,
+            size: detectedSize,
+            links: urls.map(u => ({ label: "Download", url: u }))
+          };
+          groups.push(currentGroup);
+          pendingBtnLabel = "";
+          return;
+        }
+
+        // Format 2: Explicit Key: Value labels (Size:, Button Name:, Link:)
+        const kvMatch = line.match(/^([a-zA-Z0-9\s\/+_-]{2,24})\s*:\s*(.*)$/);
+        if (kvMatch && !/^https?$/i.test(kvMatch[1].trim())) {
+          const key = kvMatch[1].trim().toLowerCase();
+          const val = kvMatch[2].trim();
+
+          if (/^(size|file\s*size)$/.test(key)) {
+            if (!currentGroup) {
+              currentGroup = { name: "", size: "", links: [] };
+              groups.push(currentGroup);
+            }
+            currentGroup.size = val;
+            return;
+          }
+          if (/^(button|button\s*name|btn|label)$/.test(key)) {
+            pendingBtnLabel = val;
+            return;
+          }
+          if (/^(link|download\s*link|url)$/.test(key) && urlRegex.test(val)) {
+            const u = val.match(urlRegex)[1];
+            if (!currentGroup) {
+              currentGroup = { name: "", size: "", links: [] };
+              groups.push(currentGroup);
+            }
+            currentGroup.links.push({ label: pendingBtnLabel || "Download", url: u });
+            pendingBtnLabel = "";
+            return;
+          }
+        }
+
+        // Format 3: Line containing URL(s) (supports multiple links under one group)
+        const lineUrls = line.match(allUrlsRegex);
+        if (lineUrls && lineUrls.length > 0) {
+          let remainder = line;
+          lineUrls.forEach(u => { remainder = remainder.replace(u, " "); });
+          remainder = remainder.replace(/[\[\]()]/g, " ").replace(/[:\-–]+/g, " ").trim();
+
+          let inlineSize = "";
+          const sMatch = remainder.match(inlineSizeRegex);
+          if (sMatch) {
+            inlineSize = sMatch[1];
+            remainder = remainder.replace(sMatch[0], " ").trim();
+          }
+
+          if (!currentGroup || (remainder && qualityHintRegex.test(remainder))) {
+            currentGroup = {
+              name: remainder,
+              size: inlineSize,
+              links: []
+            };
+            groups.push(currentGroup);
+            if (!currentGroup.name || !currentGroup.size) {
+              const missing = [];
+              if (!currentGroup.name) missing.push("Resolution/Quality");
+              if (!currentGroup.size) missing.push("File Size");
+              warnings.push(`Line ${idx + 1}: ${missing.join(" & ")} missing — blank chhoda gaya`);
+            }
+          } else {
+            if (inlineSize && !currentGroup.size) currentGroup.size = inlineSize;
+          }
+
+          const btnLabel = pendingBtnLabel || (remainder && remainder.length <= 28 && !qualityHintRegex.test(remainder) ? remainder : "Download");
+          lineUrls.forEach(u => {
+            currentGroup.links.push({ label: btnLabel, url: u });
+          });
+          pendingBtnLabel = "";
+          return;
+        }
+
+        // Format 4: Standalone File Size line
+        const cleanSizeLine = line.replace(/[\[\]()]/g, "").trim();
+        if (strictSizeRegex.test(cleanSizeLine)) {
+          if (!currentGroup) {
+            currentGroup = { name: "", size: "", links: [] };
+            groups.push(currentGroup);
+          }
+          currentGroup.size = cleanSizeLine;
+          return;
+        }
+
+        // Format 5: Quality / Resolution / File Name header line (starts a new group)
+        const inlineSize = line.match(inlineSizeRegex);
+        if (!currentGroup || currentGroup.links.length > 0 || currentGroup.name) {
+          currentGroup = {
+            name: line,
+            size: inlineSize ? inlineSize[1] : "",
+            links: []
+          };
+          groups.push(currentGroup);
+        } else {
+          currentGroup.name = line;
+          if (inlineSize && !currentGroup.size) currentGroup.size = inlineSize[1];
+        }
+      });
+
+      const validGroups = groups.filter(g => g.links && g.links.length > 0);
+      groups.forEach(g => {
+        if (!g.links || g.links.length === 0) {
+          warnings.push(`"${(g.name || g.size || "Group").slice(0, 35)}" ke neeche koi valid URL nahi mila — skip kiya gaya`);
+        }
+      });
+
+      return { groups: validGroups, warnings };
+    }
+
+    function processEditBulkLinks() {
+      const inp = document.getElementById("editBulkLinksInput");
+      const statusEl = document.getElementById("editBulkLinksStatus");
+      const rawText = (inp ? inp.value : "").trim();
+
+      if (!rawText) {
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="text-red-400 font-semibold">Pehle links ka data paste karein.</span>`;
+        }
+        return;
+      }
+
+      const { groups, warnings } = parseEditBulkLinks(rawText);
+
+      if (groups.length === 0) {
+        if (statusEl) {
+          statusEl.innerHTML = `<span class="text-red-400 font-semibold">Koi valid download URL detect nahi hua. Format check karein.</span>`;
+        }
+        return;
+      }
+
+      // Strictly append below existing links without deleting or overwriting
+      formDownloadGroups.push(...groups);
+      renderDownloadGroupsBuilder();
+      if (inp) inp.value = "";
+
+      const totalLinks = groups.reduce((acc, g) => acc + (g.links ? g.links.length : 0), 0);
+      let msgHtml = `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check mr-1"></i>${groups.length} group (${totalLinks} links) existing links ke neeche append ho gaye!</span>`;
+      if (warnings.length > 0) {
+        msgHtml += `<div class="text-amber-300 mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>${warnings.map(w => escapeHtml(w)).join(" • ")}</div>`;
+      }
+      if (statusEl) statusEl.innerHTML = msgHtml;
+    }
+
+    function editMovie(id) {
+      const m = appData.movies.find(item => item.id === id);
+      if (!m) return;
+
+      document.getElementById("editMovieId").value = m.id;
+      document.getElementById("mTitle").value = m.title || "";
+      document.getElementById("mPoster").value = m.poster || "";
+      document.getElementById("mBackdrop").value = m.backdrop || "";
+      document.getElementById("mYoutube").value = m.youtube || "";
+      document.getElementById("mYear").value = m.year || "";
+      document.getElementById("mRating").value = m.rating || "";
+      document.getElementById("mDesc").value = m.desc || "";
+
+      formSelectedCategories = Array.isArray(m.categories) ? [...m.categories] : (m.category ? [m.category] : []);
+      formSelectedTypes = Array.isArray(m.types) ? [...m.types] : (m.type ? [m.type] : []);
+      formSelectedCustomTags = Array.isArray(m.customTags) ? [...m.customTags] : [];
+      renderAdminFormMultiSelects();
+
+      formDownloadGroups = structuredClone(Array.isArray(m.downloadGroups) ? m.downloadGroups : []);
+      renderDownloadGroupsBuilder();
+
+      const editBulkBox = document.getElementById("editAiBulkLinkBox");
+      if (editBulkBox) {
+        editBulkBox.classList.remove("hidden");
+        clearEditBulkLinks();
+      }
+
+      document.getElementById("formHeading").textContent = "Editing: " + (m.title || "Untitled");
+      document.getElementById("cancelEditBtn").classList.remove("hidden");
+      document.getElementById("cancelEditBtn").classList.add("inline-flex");
+      document.getElementById("cancelEditBtnBottom").classList.remove("hidden");
+      document.getElementById("cancelEditBtnBottom").classList.add("inline-flex");
+
+      switchAdminTab("movies");
+      document.getElementById("movieForm").scrollIntoView({ behavior: "smooth" });
+    }
+
+    function deleteMovie(id) {
+      if (!confirm("Kya aap is content ko delete karna chahte hain?")) return;
+      appData.movies = appData.movies.filter(m => m.id !== id);
+      appData.topImdbIds = appData.topImdbIds.filter(tid => tid !== id);
+      if (appData.settings.heroMovieId === id) {
+        appData.settings.heroMovieId = "none";
+      }
+      saveDataToStorage();
+    }
+
+    function resetMovieForm() {
+      document.getElementById("movieForm").reset();
+      document.getElementById("editMovieId").value = "";
+      document.getElementById("formHeading").textContent = "+ Add New Movie / Web Series";
+      document.getElementById("cancelEditBtn").classList.add("hidden");
+      document.getElementById("cancelEditBtn").classList.remove("inline-flex");
+      document.getElementById("cancelEditBtnBottom").classList.add("hidden");
+      document.getElementById("cancelEditBtnBottom").classList.remove("inline-flex");
+      const editBulkBox = document.getElementById("editAiBulkLinkBox");
+      if (editBulkBox) {
+        editBulkBox.classList.add("hidden");
+        clearEditBulkLinks();
+      }
       formSelectedCategories = [];
       formSelectedTypes = [];
       formSelectedCustomTags = [];
@@ -9652,7 +10295,7 @@ https://example.com/480p`;
     function buildFullWebsiteHTML() {
       const docClone = document.documentElement.cloneNode(true);
 
-      ["loginModal", "adminModal", "mobileMenuDrawer", "playerModal"].forEach(id => {
+      ["loginModal", "adminModal", "mobileMenuDrawer", "playerModal","editAiBulkLinkBox"].forEach(id => {
         const el = docClone.querySelector("#" + id);
         if (el) el.classList.add("hidden");
       });
@@ -9737,6 +10380,7 @@ https://example.com/480p`;
     initColorTheme();
     refreshAllUI();
     checkAdminTrigger();
+    checkDirectMovieRoute();
   </script>
 
 
