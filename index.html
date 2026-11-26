@@ -60,11 +60,7 @@
     }
 
     html.light-theme #navbar {
-      background-color: rgba(255, 255, 255, 0.96) !important;
-      border-color: #e5e7eb !important;
-    }
-    html.light-theme #mobileDropdownStrip {
-      background-color: rgba(249, 250, 251, 0.96) !important;
+      background-color: rgba(255, 255, 255, 0.95) !important;
       border-color: #e5e7eb !important;
     }
     html.light-theme #topSliderSection {
@@ -114,23 +110,12 @@
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
     }
 
-    /* Premium Dropdown Navigation Animation */
-    .nav-dropdown-panel {
-      opacity: 0;
-      visibility: hidden;
-      transform: translateY(8px);
-      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-    }
+    /* Desktop Dropdown Hover & Active Support */
     .nav-dropdown-group:hover .nav-dropdown-panel,
     .nav-dropdown-group.open .nav-dropdown-panel {
       opacity: 1;
       visibility: visible;
       transform: translateY(0);
-    }
-    .nav-dropdown-group:hover .nav-chevron,
-    .nav-dropdown-group.open .nav-chevron {
-      transform: rotate(180deg);
-      color: var(--brand-color);
     }
 
     @keyframes smoothMarquee {
@@ -156,60 +141,51 @@
 <body class="min-h-screen flex flex-col">
 
   <!-- ================= NAVBAR ================= -->
-  <nav id="navbar" class="sticky top-0 w-full z-40 transition-all duration-300 bg-[#0b0b0f]/95 backdrop-blur-md border-b border-gray-800/70">
-    <div class="px-3 sm:px-6 md:px-10 py-3 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-3 sm:gap-5 min-w-0">
-        <!-- Brand Logo + Title -->
-        <a href="#" onclick="resetFilters(); return false;" class="flex items-center gap-2 text-lg sm:text-2xl font-extrabold tracking-wide uppercase leading-tight min-w-0">
-          <img id="navLogoImg" src="" alt="Logo" class="hidden w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover flex-shrink-0 border border-gray-700/50" />
-          <i id="navDefaultIcon" class="fa-solid fa-film brand-text flex-shrink-0"></i>
-          <span id="navSiteTitle" class="truncate">FLIMY <span class="brand-text">WORLD</span></span>
-        </a>
+  <nav id="navbar" class="sticky top-0 w-full z-40 transition-all duration-300 bg-[#0b0b0f]/95 backdrop-blur-md border-b border-gray-800/70 px-3 sm:px-6 md:px-10 py-3 flex items-center justify-between gap-2">
+    <div class="flex items-center gap-3 sm:gap-5 min-w-0">
+      <!-- Brand Logo + Title -->
+      <a href="#" onclick="resetFilters(); return false;" class="flex items-center gap-2 text-lg sm:text-2xl font-extrabold tracking-wide uppercase leading-tight min-w-0">
+        <img id="navLogoImg" src="" alt="Logo" class="hidden w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-cover flex-shrink-0 border border-gray-700/50" />
+        <i id="navDefaultIcon" class="fa-solid fa-film brand-text flex-shrink-0"></i>
+        <span id="navSiteTitle" class="truncate">FLIMY <span class="brand-text">WORLD</span></span>
+      </a>
 
-        <!-- Desktop Dropdown Navigation Menu + Top IMDb -->
-        <div id="navDropdownMenus" class="hidden lg:flex items-center gap-1 xl:gap-1.5 text-sm font-semibold"></div>
-      </div>
-
-      <!-- Top-Right Controls: Search, Telegram, Dark/Light Switch, Admin, 3-Line Menu -->
-      <div class="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
-        <!-- Search Bar -->
-        <div class="relative">
-          <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-          <input type="text" id="searchInput" oninput="renderContent()" placeholder="Search..."
-            class="theme-input border text-xs sm:text-sm rounded-full pl-8 pr-3 py-1.5 w-24 sm:w-44 md:w-56 outline-none transition-all focus:border-red-500" />
-        </div>
-
-        <!-- Telegram Button (Top-Right Corner) -->
-        <a id="navTelegramLink" href="#" target="_blank" rel="noopener noreferrer" title="Join Telegram"
-          onclick="return handleTelegramClick(event)"
-          class="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#229ED9]/20 hover:bg-[#229ED9] text-[#229ED9] hover:text-white border border-[#229ED9]/40 transition flex-shrink-0">
-          <i class="fa-brands fa-telegram text-base sm:text-lg"></i>
-        </a>
-
-        <!-- Dark / Light Mode Switch Button -->
-        <button type="button" id="themeToggleBtn" onclick="toggleColorTheme()" title="Switch Dark / Light Mode"
-          class="theme-surface border hover:border-gray-500 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-sm transition cursor-pointer flex-shrink-0">
-          <i id="themeToggleIcon" class="fa-solid fa-sun text-yellow-400"></i>
-        </button>
-
-        <!-- Secret Admin Button (Visible only when Admin is unlocked) -->
-        <button id="secretAdminBtn" onclick="openAdminModal()" class="hidden brand-bg text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-3 py-2 rounded-lg items-center gap-1.5 shadow-lg transition cursor-pointer">
-          <i class="fa-solid fa-sliders"></i>
-          <span class="hidden sm:inline">Admin</span>
-        </button>
-
-        <!-- Right Side 3-Line (☰) Menu Button -->
-        <button onclick="openMobileMenu()" aria-label="Open Menu" class="theme-surface border hover:border-gray-500 w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer flex-shrink-0">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-      </div>
+      <!-- Desktop Dropdown Navigation Menu + Top IMDb -->
+      <div id="navDropdownMenus" class="hidden lg:flex items-center gap-1 xl:gap-2 text-sm font-medium"></div>
     </div>
 
-    <!-- Mobile / Tablet Compact Dropdown Bar (Syncs dynamically with Admin Panel) -->
-    <div id="mobileDropdownStrip" class="lg:hidden relative border-t border-gray-800/70 bg-[#0e0e14]/95 px-3 py-1.5">
-      <div id="mobileNavDropdownButtons" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs font-semibold"></div>
-      <!-- Shared Mobile Dropdown Box -->
-      <div id="mobileActiveDropdownBox" class="hidden absolute left-3 right-3 top-full mt-1.5 z-50 theme-surface border rounded-xl p-3 shadow-2xl"></div>
+    <!-- Top-Right Controls: Search, Telegram, Dark/Light Switch, Admin, 3-Line Menu -->
+    <div class="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+      <!-- Search Bar -->
+      <div class="relative">
+        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+        <input type="text" id="searchInput" oninput="renderContent()" placeholder="Search..."
+          class="theme-input border text-xs sm:text-sm rounded-full pl-8 pr-3 py-1.5 w-24 sm:w-44 md:w-56 outline-none transition-all focus:border-red-500" />
+      </div>
+
+      <!-- Telegram Button (Top-Right Corner) -->
+      <a id="navTelegramLink" href="#" target="_blank" rel="noopener noreferrer" title="Join Telegram"
+        onclick="return handleTelegramClick(event)"
+        class="inline-flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#229ED9]/20 hover:bg-[#229ED9] text-[#229ED9] hover:text-white border border-[#229ED9]/40 transition flex-shrink-0">
+        <i class="fa-brands fa-telegram text-base sm:text-lg"></i>
+      </a>
+
+      <!-- Dark / Light Mode Switch Button -->
+      <button type="button" id="themeToggleBtn" onclick="toggleColorTheme()" title="Switch Dark / Light Mode"
+        class="theme-surface border hover:border-gray-500 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-sm transition cursor-pointer flex-shrink-0">
+        <i id="themeToggleIcon" class="fa-solid fa-sun text-yellow-400"></i>
+      </button>
+
+      <!-- Secret Admin Button (Visible only when Admin is unlocked) -->
+      <button id="secretAdminBtn" onclick="openAdminModal()" class="hidden brand-bg text-white text-xs sm:text-sm font-semibold px-2.5 sm:px-3 py-2 rounded-lg items-center gap-1.5 shadow-lg transition cursor-pointer">
+        <i class="fa-solid fa-sliders"></i>
+        <span class="hidden sm:inline">Admin</span>
+      </button>
+
+      <!-- Right Side 3-Line (☰) Menu Button -->
+      <button onclick="openMobileMenu()" aria-label="Open Menu" class="theme-surface border hover:border-gray-500 w-9 h-9 rounded-lg flex items-center justify-center text-base cursor-pointer flex-shrink-0">
+        <i class="fa-solid fa-bars"></i>
+      </button>
     </div>
   </nav>
 
@@ -442,7 +418,7 @@
         </button>
         <button type="button" onclick="switchAdminTab('sections')" id="tabBtn-sections"
           class="admin-tab px-3 py-2 sm:px-4 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border border-gray-800 sm:border-0 sm:border-b-2 sm:border-transparent text-gray-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer whitespace-nowrap">
-          <i class="fa-solid fa-layer-group"></i> <span>Dropdown &amp; Menus</span>
+          <i class="fa-solid fa-layer-group"></i> <span>Sections &amp; Menus</span>
         </button>
         <button type="button" onclick="switchAdminTab('topimdb')" id="tabBtn-topimdb"
           class="admin-tab px-3 py-2 sm:px-4 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border border-gray-800 sm:border-0 sm:border-b-2 sm:border-transparent text-gray-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer whitespace-nowrap">
@@ -502,11 +478,11 @@
               </div>
             </div>
 
-            <!-- Multiple Selection: Categories, Types & Dropdown Tags -->
+            <!-- Multiple Selection: Categories, Types & Custom Section Tags -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="bg-[#12121a] border border-gray-800 rounded-xl p-3 space-y-2">
                 <div class="flex items-center justify-between">
-                  <label id="catBoxLabel" class="text-xs font-bold text-gray-200">Movies / Categories (Multiple Allowed)</label>
+                  <label class="text-xs font-bold text-gray-200">Select Categories (Multiple Allowed)</label>
                   <span id="selectedCatsCount" class="text-[11px] brand-text font-semibold">0 selected</span>
                 </div>
                 <div id="mCategoryMultiSelect" class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1"></div>
@@ -514,16 +490,16 @@
 
               <div class="bg-[#12121a] border border-gray-800 rounded-xl p-3 space-y-2">
                 <div class="flex items-center justify-between">
-                  <label id="typeBoxLabel" class="text-xs font-bold text-gray-200">TV Series / Types (Multiple Allowed)</label>
+                  <label class="text-xs font-bold text-gray-200">Select Types &amp; Genres (Multiple Allowed)</label>
                   <span id="selectedTypesCount" class="text-[11px] brand-text font-semibold">0 selected</span>
                 </div>
                 <div id="mTypeMultiSelect" class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1"></div>
               </div>
             </div>
 
-            <!-- Custom Dropdown Sections Multi-Select (Collections, Genre, OTT, etc.) -->
+            <!-- Custom Sections Multi-Select (if any extra custom sections exist) -->
             <div id="mCustomTagsWrapper" class="hidden bg-[#12121a] border border-gray-800 rounded-xl p-3 space-y-2">
-              <label class="text-xs font-bold text-gray-200 block">Select Dropdown Section Tags (Collections, Genre, OTT...)</label>
+              <label class="text-xs font-bold text-gray-200 block">Select Custom Section Tags (OTT, Genre, Collections...)</label>
               <div id="mCustomTagsMultiSelect" class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1"></div>
             </div>
 
@@ -566,20 +542,21 @@
           </div>
         </div>
 
-        <!-- ================= TAB 2: DROPDOWN MENU, CUSTOM SECTIONS, CATEGORIES & TYPES ================= -->
+        <!-- ================= TAB 2: CUSTOM SECTIONS, CATEGORIES, TYPES & DROPDOWN MENUS ================= -->
         <div id="tab-sections" class="admin-panel hidden space-y-6">
+          <!-- Add New Custom Section Heading -->
           <div class="bg-[#1a1a24] p-4 sm:p-5 rounded-xl border border-gray-800 space-y-3">
-            <h3 class="font-bold text-base brand-text">+ Add New Navigation Dropdown Heading</h3>
-            <p class="text-xs text-gray-400">Yahan se aap unlimited dropdown headings (jaise <b>Movies</b>, <b>TV Series</b>, <b>Collections</b>, <b>Genre</b>, <b>OTT</b>) bana sakte hain, unhe rename/reorder kar sakte hain, aur har heading ke andar unlimited buttons add/edit/delete/reorder kar sakte hain. Yeh sab website ke <b>Top Navigation Dropdown</b> aur <b>☰ Menu</b> mein automatically dikhenge.</p>
+            <h3 class="font-bold text-base brand-text">+ Create New Custom Heading / Dropdown Section</h3>
+            <p class="text-xs text-gray-400">Yahan se aap unlimited bold headings (jaise <b>Genre</b>, <b>OTT Collection</b>, <b>Movies</b>, <b>TV Series</b>) bana sakte hain. Yeh headings Top Navigation Dropdown aur Right-Top <b>☰</b> Menu dono mein dikhengi.</p>
             <div class="flex flex-col sm:flex-row gap-2.5">
-              <input type="text" id="newCustomSectionInput" placeholder="e.g. Collections, Genre, OTT Platform, Awards..." class="flex-1 bg-[#101017] border border-gray-700 rounded-lg px-3.5 py-2 text-sm outline-none focus:border-white" />
+              <input type="text" id="newCustomSectionInput" placeholder="e.g. Genre, OTT Collection, Awards..." class="flex-1 bg-[#101017] border border-gray-700 rounded-lg px-3.5 py-2 text-sm outline-none focus:border-white" />
               <button type="button" onclick="addCustomSection()" class="brand-bg text-white font-semibold px-5 py-2 rounded-lg text-sm cursor-pointer whitespace-nowrap">
-                + Add Dropdown Heading
+                + Add Heading
               </button>
             </div>
           </div>
 
-          <!-- Dynamic Dropdown Sections Manager List -->
+          <!-- Dynamic Sections Manager List -->
           <div id="adminSectionsManagerList" class="space-y-4"></div>
         </div>
 
@@ -667,7 +644,7 @@
           <div class="bg-[#1a1a24] p-4 sm:p-5 rounded-xl border border-gray-800 space-y-4">
             <h3 class="font-bold text-base brand-text">Generate Complete Website HTML Code (For GitHub)</h3>
             <p class="text-xs text-gray-300 leading-relaxed">
-              Admin Panel mein koi bhi movie, dropdown menu, Top IMDb list, logo ya setting update karne ke baad neeche diye gaye button se <b>poori website ka complete HTML code</b> copy karein aur seedha GitHub ki <code>index.html</code> file mein paste karke replace kar dein:
+              Admin Panel mein koi bhi movie, section, Top IMDb list, logo ya setting update karne ke baad neeche diye gaye button se <b>poori website ka complete HTML code</b> copy karein aur seedha GitHub ki <code>index.html</code> file mein paste karke replace kar dein:
             </p>
             <div class="flex flex-wrap gap-3 pt-1">
               <button type="button" onclick="copyFullWebsiteHTML()" class="brand-bg text-white text-xs sm:text-sm font-bold px-4 py-2.5 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer">
@@ -709,12 +686,12 @@
       "logoUrl": ""
     },
     "categories": [
-      "Hollywood",
+      "Trending",
       "Bollywood",
-      "South Indian",
-      "Korean Movies",
-      "Anime Movies",
-      "Documentary Movies"
+      "Hollywood",
+      "Web Series",
+      "South Action",
+      "Sci-Fi"
     ],
     "types": [
       "Movie",
@@ -725,27 +702,27 @@
     "sections": [
       {
         "id": "sec_categories",
-        "title": "Movies",
+        "title": "Categories",
         "kind": "category",
-        "items": ["Hollywood", "Bollywood", "South Indian", "Korean Movies", "Anime Movies", "Documentary Movies"]
+        "items": ["Trending", "Bollywood", "Hollywood", "Web Series", "South Action", "Sci-Fi"]
       },
       {
         "id": "sec_types",
-        "title": "TV Series",
+        "title": "Content Types",
         "kind": "type",
-        "items": ["Web Series", "Animated", "Drama", "Hindi Dubbed Series", "Korean Drama"]
-      },
-      {
-        "id": "sec_collections",
-        "title": "Collections",
-        "kind": "custom",
-        "items": ["Netflix", "Prime Video", "Disney+ Hotstar", "SonyLIV", "Marvel Universe"]
+        "items": ["Movie", "Web Series", "Animated", "Drama"]
       },
       {
         "id": "sec_genre",
         "title": "Genre",
         "kind": "custom",
-        "items": ["Sci-Fi", "Fantasy", "Crime", "Suspense", "Thriller", "South Action"]
+        "items": ["Sci-Fi", "Fantasy", "Crime", "Suspense", "Thriller"]
+      },
+      {
+        "id": "sec_ott",
+        "title": "OTT Collection",
+        "kind": "custom",
+        "items": ["Netflix", "Prime Video", "Disney+ Hotstar", "SonyLIV"]
       }
     ],
     "topImdbIds": ["m1", "m2", "m1795617548853"],
@@ -874,8 +851,8 @@
       {
         "id": "m1",
         "title": "Dune: Part Two",
-        "category": "Hollywood",
-        "categories": ["Hollywood"],
+        "category": "Sci-Fi",
+        "categories": ["Sci-Fi", "Hollywood"],
         "type": "Movie",
         "types": ["Movie"],
         "customTags": ["Sci-Fi"],
@@ -905,8 +882,8 @@
       {
         "id": "m2",
         "title": "Mirzapur: Season 3",
-        "category": "Bollywood",
-        "categories": ["Bollywood"],
+        "category": "Web Series",
+        "categories": ["Web Series", "Bollywood"],
         "type": "Web Series",
         "types": ["Web Series", "Drama"],
         "customTags": ["Crime", "Thriller", "Prime Video"],
@@ -932,11 +909,11 @@
       {
         "id": "m3",
         "title": "Kalki 2898 AD",
-        "category": "South Indian",
-        "categories": ["South Indian"],
+        "category": "South Action",
+        "categories": ["South Action", "Sci-Fi"],
         "type": "Movie",
         "types": ["Movie"],
-        "customTags": ["Sci-Fi", "Fantasy", "South Action", "Prime Video"],
+        "customTags": ["Sci-Fi", "Fantasy", "Prime Video"],
         "year": "2024",
         "rating": "8.2",
         "poster": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80",
@@ -960,7 +937,7 @@
       } catch (e) {
         return {
           settings: { siteName: "FLIMY WORLD", brandColor: "#e50914", brandHover: "#b20710", heroMovieId: "none", telegramUrl: "", logoUrl: "" },
-          categories: ["Hollywood", "Bollywood", "South Indian", "Korean Movies", "Anime Movies", "Documentary Movies"],
+          categories: ["Trending", "Bollywood", "Hollywood", "Web Series", "South Action", "Sci-Fi"],
           types: ["Movie", "Web Series", "Animated", "Drama"],
           sections: [],
           topImdbIds: [],
@@ -970,26 +947,28 @@
     }
 
     const DEFAULT_DATA = getEmbeddedData();
-    let appData = JSON.parse(localStorage.getItem("flimyWorldDataV4")) || structuredClone(DEFAULT_DATA);
+    let appData = JSON.parse(localStorage.getItem("flimyWorldDataV3")) || structuredClone(DEFAULT_DATA);
 
+    // Normalize & Migrate Data Safely
     function normalizeAppData() {
       if (!appData.settings) {
         appData.settings = { siteName: "FLIMY WORLD", brandColor: "#e50914", brandHover: "#b20710", heroMovieId: "none", telegramUrl: "", logoUrl: "" };
       }
       if (!Array.isArray(appData.categories)) {
-        appData.categories = ["Hollywood", "Bollywood", "South Indian", "Korean Movies", "Anime Movies", "Documentary Movies"];
+        appData.categories = ["Trending", "Bollywood", "Hollywood", "Web Series"];
       }
       if (!Array.isArray(appData.types)) {
         appData.types = ["Movie", "Web Series", "Animated", "Drama"];
       }
       if (!Array.isArray(appData.sections) || appData.sections.length === 0) {
         appData.sections = [
-          { id: "sec_categories", title: "Movies", kind: "category", items: [...appData.categories] },
-          { id: "sec_types", title: "TV Series", kind: "type", items: [...appData.types] },
-          { id: "sec_collections", title: "Collections", kind: "custom", items: ["Netflix", "Prime Video", "Disney+ Hotstar", "SonyLIV"] },
-          { id: "sec_genre", title: "Genre", kind: "custom", items: ["Sci-Fi", "Fantasy", "Crime", "Suspense", "Thriller"] }
+          { id: "sec_categories", title: "Categories", kind: "category", items: [...appData.categories] },
+          { id: "sec_types", title: "Content Types", kind: "type", items: [...appData.types] },
+          { id: "sec_genre", title: "Genre", kind: "custom", items: ["Sci-Fi", "Fantasy", "Crime", "Suspense", "Thriller"] },
+          { id: "sec_ott", title: "OTT Collection", kind: "custom", items: ["Netflix", "Prime Video", "Disney+ Hotstar", "SonyLIV"] }
         ];
       } else {
+        // Sync primary category & type sections with appData.categories / types
         const catSec = appData.sections.find(s => s.kind === "category");
         if (catSec) appData.categories = [...catSec.items];
         const typeSec = appData.sections.find(s => s.kind === "type");
@@ -1017,10 +996,11 @@
 
     normalizeAppData();
 
-    let activeFilter = { mode: "all", value: "All", label: "All" };
-    let activeMobileDropdownSecId = null;
+    // Filter States
+    let activeFilter = { mode: "all", value: "All", label: "All" }; // modes: 'all', 'category', 'type', 'custom', 'topimdb'
     let isAdminUnlocked = sessionStorage.getItem("flimyAdminAuth") === "true";
 
+    // Form Selection States
     let formDownloadGroups = [];
     let formSelectedCategories = [];
     let formSelectedTypes = [];
@@ -1038,7 +1018,7 @@
 
     function saveDataToStorage() {
       normalizeAppData();
-      localStorage.setItem("flimyWorldDataV4", JSON.stringify(appData));
+      localStorage.setItem("flimyWorldDataV3", JSON.stringify(appData));
       refreshAllUI();
     }
 
@@ -1046,7 +1026,6 @@
       applyThemeAndBranding();
       renderTopSlider();
       renderNavDropdownMenus();
-      renderMobileDropdownStrip();
       renderCategories();
       renderDrawerDynamicSections();
       renderHero();
@@ -1072,11 +1051,15 @@
       if (mode === "light") {
         htmlEl.classList.add("light-theme");
         htmlEl.classList.remove("dark");
-        if (iconEl) iconEl.className = "fa-solid fa-moon text-indigo-600";
+        if (iconEl) {
+          iconEl.className = "fa-solid fa-moon text-indigo-600";
+        }
       } else {
         htmlEl.classList.remove("light-theme");
         htmlEl.classList.add("dark");
-        if (iconEl) iconEl.className = "fa-solid fa-sun text-yellow-400";
+        if (iconEl) {
+          iconEl.className = "fa-solid fa-sun text-yellow-400";
+        }
       }
       localStorage.setItem("flimyColorMode", mode);
     }
@@ -1124,7 +1107,6 @@
       if (e.key === "Escape") {
         if (!document.getElementById("playerModal").classList.contains("hidden")) closePlayerModal();
         if (!document.getElementById("mobileMenuDrawer").classList.contains("hidden")) closeMobileMenu();
-        closeAllNavDropdowns();
       }
     });
 
@@ -1184,6 +1166,7 @@
       }
       document.getElementById("footerSiteTitle").textContent = siteName;
 
+      // Website Logo Handling
       const logoUrl = (appData.settings.logoUrl || "").trim();
       const navLogo = document.getElementById("navLogoImg");
       const navIcon = document.getElementById("navDefaultIcon");
@@ -1201,6 +1184,7 @@
         footerLogo.classList.add("hidden");
       }
 
+      // Telegram URL
       const tgUrl = (appData.settings.telegramUrl || "").trim();
       const navTg = document.getElementById("navTelegramLink");
       const drawerTgBtn = document.getElementById("drawerTelegramBtn");
@@ -1243,49 +1227,34 @@
       }).join("");
     }
 
-    // ================= PREMIUM DROPDOWN NAVIGATION MENU (PC + MOBILE) =================
+    // ================= TOP NAVBAR DROPDOWN MENU + TOP IMDb =================
     function renderNavDropdownMenus() {
       const container = document.getElementById("navDropdownMenus");
       if (!container) return;
 
       const dropdownsHtml = appData.sections.map(sec => {
         const validItems = (sec.items || []).filter(Boolean);
-        const isMultiCol = validItems.length > 6;
-        const hasActiveChild = activeFilter.mode === sec.kind && validItems.includes(activeFilter.value);
-
         return `
           <div class="relative nav-dropdown-group">
             <button type="button" onclick="toggleNavDropdown(this)"
-              class="px-3 py-2 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-                hasActiveChild ? 'brand-bg text-white shadow' : 'hover:bg-gray-500/15'
-              }">
+              class="px-3 py-2 rounded-lg hover:bg-gray-500/15 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer">
               <span>${escapeHtml(sec.title)}</span>
-              <i class="fa-solid fa-chevron-down text-[10px] opacity-75 nav-chevron transition-transform duration-200"></i>
+              <i class="fa-solid fa-chevron-down text-[10px] opacity-75"></i>
             </button>
-
-            <div class="nav-dropdown-panel absolute left-0 top-full pt-2 z-50 ${isMultiCol ? 'min-w-[360px] max-w-[440px]' : 'min-w-[230px] max-w-[290px]'}">
-              <div class="theme-surface border rounded-2xl p-2.5 shadow-2xl">
-                <div class="px-2.5 py-1.5 mb-1.5 border-b border-gray-700/30 flex items-center justify-between">
-                  <span class="text-[11px] font-extrabold uppercase tracking-wider brand-text">${escapeHtml(sec.title)}</span>
-                  <span class="text-[10px] theme-text-muted">${validItems.length} options</span>
-                </div>
-                <div class="grid ${isMultiCol ? 'grid-cols-2' : 'grid-cols-1'} gap-1 max-h-80 overflow-y-auto">
-                  ${validItems.length === 0
-                    ? `<span class="text-xs theme-text-muted px-3 py-2 col-span-full">No options added yet</span>`
-                    : validItems.map(item => {
-                      const isSelected = activeFilter.value === item && activeFilter.mode === sec.kind;
-                      return `
-                        <button type="button" onclick="applySectionFilter('${escapeHtml(sec.kind)}', '${escapeHtml(item)}'); closeAllNavDropdowns();"
-                          class="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-between gap-2 cursor-pointer ${
-                            isSelected ? 'brand-bg text-white shadow' : 'hover:bg-red-600/90 hover:text-white'
-                          }">
-                          <span class="truncate">${escapeHtml(item)}</span>
-                          <i class="fa-solid fa-chevron-right text-[9px] opacity-60 flex-shrink-0"></i>
-                        </button>
-                      `;
-                    }).join("")
-                  }
-                </div>
+            <div class="nav-dropdown-panel opacity-0 invisible translate-y-1 transition-all duration-200 absolute left-0 top-full pt-1.5 z-50 min-w-[210px] max-w-[280px]">
+              <div class="theme-surface border rounded-xl p-2 shadow-2xl grid grid-cols-1 gap-1 max-h-80 overflow-y-auto">
+                ${validItems.length === 0
+                  ? `<span class="text-xs theme-text-muted px-3 py-2">No items yet</span>`
+                  : validItems.map(item => `
+                    <button type="button" onclick="applySectionFilter('${escapeHtml(sec.kind)}', '${escapeHtml(item)}'); closeAllNavDropdowns();"
+                      class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-red-600 hover:text-white transition flex items-center justify-between gap-2 cursor-pointer ${
+                        activeFilter.value === item && activeFilter.mode === sec.kind ? 'brand-bg text-white' : ''
+                      }">
+                      <span class="truncate">${escapeHtml(item)}</span>
+                      <i class="fa-solid fa-angle-right text-[10px] opacity-60"></i>
+                    </button>
+                  `).join("")
+                }
               </div>
             </div>
           </div>
@@ -1293,9 +1262,9 @@
       }).join("");
 
       const topImdbBtn = `
-        <button type="button" onclick="selectTopImdb(); closeAllNavDropdowns();"
+        <button type="button" onclick="selectTopImdb()"
           class="px-3 py-2 rounded-lg transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer font-bold ${
-            activeFilter.mode === 'topimdb' ? 'bg-yellow-500 text-black shadow' : 'text-yellow-500 hover:bg-yellow-500/15'
+            activeFilter.mode === 'topimdb' ? 'bg-yellow-500 text-black' : 'text-yellow-500 hover:bg-yellow-500/15'
           }">
           <i class="fa-solid fa-trophy text-xs"></i>
           <span>Top IMDb</span>
@@ -1303,80 +1272,6 @@
       `;
 
       container.innerHTML = dropdownsHtml + topImdbBtn;
-    }
-
-    function renderMobileDropdownStrip() {
-      const btnRow = document.getElementById("mobileNavDropdownButtons");
-      const box = document.getElementById("mobileActiveDropdownBox");
-      if (!btnRow || !box) return;
-
-      const btnsHtml = appData.sections.map(sec => {
-        const isOpen = activeMobileDropdownSecId === sec.id;
-        return `
-          <button type="button" onclick="toggleMobileDropdownSection('${escapeHtml(sec.id)}')"
-            class="px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer flex-shrink-0 ${
-              isOpen ? 'brand-bg text-white border-transparent' : 'theme-card'
-            }">
-            <span>${escapeHtml(sec.title)}</span>
-            <i class="fa-solid fa-chevron-down text-[9px] transition-transform ${isOpen ? 'rotate-180' : ''}"></i>
-          </button>
-        `;
-      }).join("");
-
-      const topImdbMobileBtn = `
-        <button type="button" onclick="selectTopImdb(); closeAllNavDropdowns();"
-          class="px-3 py-1.5 rounded-lg border transition flex items-center gap-1 whitespace-nowrap cursor-pointer flex-shrink-0 font-bold ${
-            activeFilter.mode === 'topimdb' ? 'bg-yellow-500 text-black border-transparent' : 'theme-card text-yellow-500 border-yellow-500/40'
-          }">
-          <i class="fa-solid fa-trophy text-[10px]"></i>
-          <span>Top IMDb</span>
-        </button>
-      `;
-
-      btnRow.innerHTML = btnsHtml + topImdbMobileBtn;
-
-      if (!activeMobileDropdownSecId) {
-        box.classList.add("hidden");
-        box.innerHTML = "";
-        return;
-      }
-
-      const activeSec = appData.sections.find(s => s.id === activeMobileDropdownSecId);
-      if (!activeSec) {
-        box.classList.add("hidden");
-        return;
-      }
-
-      const validItems = (activeSec.items || []).filter(Boolean);
-      box.classList.remove("hidden");
-      box.innerHTML = `
-        <div class="flex items-center justify-between pb-2 mb-2 border-b border-gray-700/40">
-          <span class="text-xs font-extrabold uppercase tracking-wider brand-text">${escapeHtml(activeSec.title)}</span>
-          <button type="button" onclick="closeAllNavDropdowns()" class="text-xs theme-text-muted hover:text-red-500 px-1.5 cursor-pointer">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-        <div class="grid grid-cols-2 gap-1.5 max-h-60 overflow-y-auto">
-          ${validItems.length === 0
-            ? `<span class="text-xs theme-text-muted col-span-full py-2">No items yet</span>`
-            : validItems.map(item => `
-              <button type="button" onclick="applySectionFilter('${escapeHtml(activeSec.kind)}', '${escapeHtml(item)}'); closeAllNavDropdowns();"
-                class="text-left px-3 py-2 rounded-lg text-xs font-semibold border transition truncate cursor-pointer ${
-                  activeFilter.value === item && activeFilter.mode === activeSec.kind
-                    ? 'brand-bg text-white border-transparent'
-                    : 'theme-card hover:border-red-500'
-                }">
-                ${escapeHtml(item)}
-              </button>
-            `).join("")
-          }
-        </div>
-      `;
-    }
-
-    function toggleMobileDropdownSection(secId) {
-      activeMobileDropdownSecId = (activeMobileDropdownSecId === secId) ? null : secId;
-      renderMobileDropdownStrip();
     }
 
     function toggleNavDropdown(btnEl) {
@@ -1388,14 +1283,10 @@
 
     function closeAllNavDropdowns() {
       document.querySelectorAll(".nav-dropdown-group.open").forEach(el => el.classList.remove("open"));
-      if (activeMobileDropdownSecId !== null) {
-        activeMobileDropdownSecId = null;
-        renderMobileDropdownStrip();
-      }
     }
 
     document.addEventListener("click", (e) => {
-      if (!e.target.closest(".nav-dropdown-group") && !e.target.closest("#mobileDropdownStrip")) {
+      if (!e.target.closest(".nav-dropdown-group")) {
         closeAllNavDropdowns();
       }
     });
@@ -1633,15 +1524,21 @@
         return;
       }
 
-      // Filtered or Search View (Matches across Categories, Types & Custom Tags)
+      // Filtered or Search View
       if (query || activeFilter.mode !== "all") {
         const filtered = appData.movies.filter(m => {
+          const mCats = m.categories || [];
+          const mTypes = m.types || [];
+          const mCustom = m.customTags || [];
           const allTags = getMovieAllTags(m);
-          const targetVal = activeFilter.value.toLowerCase();
 
           let matchesFilter = true;
-          if (activeFilter.mode !== "all") {
-            matchesFilter = allTags.some(t => t.toLowerCase() === targetVal);
+          if (activeFilter.mode === "category") {
+            matchesFilter = mCats.includes(activeFilter.value);
+          } else if (activeFilter.mode === "type") {
+            matchesFilter = mTypes.includes(activeFilter.value);
+          } else if (activeFilter.mode === "custom") {
+            matchesFilter = mCustom.includes(activeFilter.value) || allTags.includes(activeFilter.value);
           }
 
           const matchesQuery = !query ||
@@ -1673,7 +1570,7 @@
         return;
       }
 
-      // Home View: Top IMDb Row + Category Rows + Uncategorized Row
+      // Home View: Top IMDb Row (if populated) + Category Rows + Uncategorized Row
       let html = "";
 
       const topMovies = appData.topImdbIds
@@ -1767,6 +1664,7 @@
       document.getElementById("modalDesc").textContent = movie.desc || "";
       document.getElementById("modalPosterImg").src = movie.poster || movie.backdrop || "";
 
+      // All Tags Badges
       document.getElementById("modalAllTagsBadges").innerHTML = allTags.map(tag => `
         <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-gray-500/15 border border-gray-500/30">
           ${escapeHtml(tag)}
@@ -1798,6 +1696,7 @@
         videoBox.innerHTML = "";
       }
 
+      // Render Download / Watch Link Groups
       const downloadWrapper = document.getElementById("modalDownloadWrapper");
       const groupsContainer = document.getElementById("modalDownloadGroups");
       let groups = Array.isArray(movie.downloadGroups) ? movie.downloadGroups : [];
@@ -1830,6 +1729,7 @@
         groupsContainer.innerHTML = "";
       }
 
+      // Render Automatic "More Like This" Section based on shared Categories, Types, and Tags
       renderMoreLikeThis(movie);
 
       const modal = document.getElementById("playerModal");
@@ -1938,11 +1838,6 @@
       const customWrap = document.getElementById("mCustomTagsWrapper");
       const customBox = document.getElementById("mCustomTagsMultiSelect");
 
-      const catSec = appData.sections.find(s => s.kind === "category");
-      const typeSec = appData.sections.find(s => s.kind === "type");
-      document.getElementById("catBoxLabel").textContent = `${catSec ? catSec.title : "Categories"} (Multiple Allowed)`;
-      document.getElementById("typeBoxLabel").textContent = `${typeSec ? typeSec.title : "Types"} (Multiple Allowed)`;
-
       document.getElementById("selectedCatsCount").textContent = `${formSelectedCategories.length} selected`;
       document.getElementById("selectedTypesCount").textContent = `${formSelectedTypes.length} selected`;
 
@@ -1972,6 +1867,7 @@
         `;
       }).join("");
 
+      // Gather all items from custom sections
       const customSections = appData.sections.filter(s => s.kind === "custom");
       const allCustomItems = Array.from(new Set(customSections.flatMap(s => s.items || [])));
 
@@ -2092,6 +1988,7 @@
       });
     }
 
+    // Mobile Touch Drag Support for 3-Line Drag Handle (☰)
     let touchDragStartIdx = null;
     function handleTouchDragStart(e, idx) {
       touchDragStartIdx = idx;
@@ -2140,6 +2037,7 @@
           
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-2">
+              <!-- 3-Line Drag Handle (☰) for PC & Mobile Drag & Drop -->
               <span draggable="true"
                 ondragstart="handleGroupDragStart(event, ${gIdx})"
                 ondragend="handleGroupDragEnd(event)"
@@ -2345,7 +2243,7 @@
       if (action === "delete") deleteMovie(id);
     });
 
-    // ================= DROPDOWN & CUSTOM SECTIONS MANAGEMENT =================
+    // ================= CUSTOM SECTIONS, HEADINGS & BUTTONS MANAGEMENT =================
     function addCustomSection() {
       const input = document.getElementById("newCustomSectionInput");
       const title = input.value.trim();
@@ -2363,7 +2261,7 @@
     function renameSectionHeading(secId) {
       const sec = appData.sections.find(s => s.id === secId);
       if (!sec) return;
-      const newName = prompt("Dropdown Heading ka naya naam enter karein:", sec.title);
+      const newName = prompt("Heading ka naya naam enter karein:", sec.title);
       if (newName && newName.trim()) {
         sec.title = newName.trim();
         saveDataToStorage();
@@ -2374,10 +2272,10 @@
       const sec = appData.sections.find(s => s.id === secId);
       if (!sec) return;
       if (sec.kind === "category" || sec.kind === "type") {
-        alert("Core Movies/Categories aur TV Series/Types headings delete nahi ho sakte, lekin aap unka naam rename aur andar ke buttons add/edit/delete/reorder kar sakte hain.");
+        alert("Core Categories aur Content Types section delete nahi ho sakte, lekin aap unka naam rename aur buttons edit/reorder kar sakte hain.");
         return;
       }
-      if (!confirm(`"${sec.title}" dropdown section delete karein?`)) return;
+      if (!confirm(`"${sec.title}" section delete karein?`)) return;
       appData.sections = appData.sections.filter(s => s.id !== secId);
       saveDataToStorage();
     }
@@ -2414,6 +2312,7 @@
       const trimmed = newVal.trim();
       sec.items[itemIdx] = trimmed;
 
+      // Update references in existing movies
       appData.movies.forEach(m => {
         if (sec.kind === "category") {
           m.categories = (m.categories || []).map(c => c === oldVal ? trimmed : c);
@@ -2461,11 +2360,11 @@
           <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 pb-3">
             <div class="flex items-center gap-2">
               <span class="font-extrabold text-sm sm:text-base text-white">${escapeHtml(sec.title)}</span>
-              <span class="text-[10px] uppercase px-2 py-0.5 rounded bg-gray-800 text-gray-400">Dropdown Menu</span>
+              <span class="text-[10px] uppercase px-2 py-0.5 rounded bg-gray-800 text-gray-400">${escapeHtml(sec.kind)}</span>
             </div>
             <div class="flex items-center gap-1.5">
-              ${sIdx > 0 ? `<button type="button" onclick="moveSectionOrder(${sIdx}, -1)" title="Move Heading Left/Up" class="bg-gray-800 hover:bg-gray-700 text-gray-300 w-7 h-7 rounded text-xs cursor-pointer"><i class="fa-solid fa-arrow-up"></i></button>` : ""}
-              ${sIdx < appData.sections.length - 1 ? `<button type="button" onclick="moveSectionOrder(${sIdx}, 1)" title="Move Heading Right/Down" class="bg-gray-800 hover:bg-gray-700 text-gray-300 w-7 h-7 rounded text-xs cursor-pointer"><i class="fa-solid fa-arrow-down"></i></button>` : ""}
+              ${sIdx > 0 ? `<button type="button" onclick="moveSectionOrder(${sIdx}, -1)" title="Move Heading Up" class="bg-gray-800 hover:bg-gray-700 text-gray-300 w-7 h-7 rounded text-xs cursor-pointer"><i class="fa-solid fa-arrow-up"></i></button>` : ""}
+              ${sIdx < appData.sections.length - 1 ? `<button type="button" onclick="moveSectionOrder(${sIdx}, 1)" title="Move Heading Down" class="bg-gray-800 hover:bg-gray-700 text-gray-300 w-7 h-7 rounded text-xs cursor-pointer"><i class="fa-solid fa-arrow-down"></i></button>` : ""}
               <button type="button" onclick="renameSectionHeading('${escapeHtml(sec.id)}')" class="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-2.5 py-1 rounded text-xs font-semibold cursor-pointer">
                 <i class="fa-solid fa-pen mr-1"></i> Rename
               </button>
@@ -2476,8 +2375,9 @@
             </div>
           </div>
 
+          <!-- Add Button inside this Heading -->
           <div class="flex gap-2">
-            <input type="text" id="addBtnInput_${escapeHtml(sec.id)}" placeholder="Add dropdown option under ${escapeHtml(sec.title)}..."
+            <input type="text" id="addBtnInput_${escapeHtml(sec.id)}" placeholder="Add button under ${escapeHtml(sec.title)}..."
               onkeydown="if(event.key==='Enter'){event.preventDefault(); addButtonToSection('${escapeHtml(sec.id)}');}"
               class="flex-1 bg-[#101017] border border-gray-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm outline-none focus:border-white" />
             <button type="button" onclick="addButtonToSection('${escapeHtml(sec.id)}')" class="brand-bg text-white font-semibold px-4 py-1.5 rounded-lg text-xs cursor-pointer">
@@ -2485,18 +2385,19 @@
             </button>
           </div>
 
+          <!-- Buttons List with Edit, Delete & Reorder -->
           <div class="flex flex-wrap gap-2">
             ${(sec.items || []).length === 0
-              ? `<span class="text-xs text-gray-500 italic">No options added yet.</span>`
+              ? `<span class="text-xs text-gray-500 italic">No buttons added yet.</span>`
               : (sec.items || []).map((item, iIdx) => `
                 <div class="bg-[#101017] border border-gray-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
                   <span>${escapeHtml(item)}</span>
                   ${iIdx > 0 ? `<button type="button" onclick="moveButtonInSection('${escapeHtml(sec.id)}', ${iIdx}, -1)" title="Move Left" class="text-gray-400 hover:text-white px-1 cursor-pointer">&larr;</button>` : ""}
                   ${iIdx < sec.items.length - 1 ? `<button type="button" onclick="moveButtonInSection('${escapeHtml(sec.id)}', ${iIdx}, 1)" title="Move Right" class="text-gray-400 hover:text-white px-1 cursor-pointer">&rarr;</button>` : ""}
-                  <button type="button" onclick="editButtonInSection('${escapeHtml(sec.id)}', ${iIdx})" title="Edit Option" class="text-blue-400 hover:text-blue-300 px-1 cursor-pointer">
+                  <button type="button" onclick="editButtonInSection('${escapeHtml(sec.id)}', ${iIdx})" title="Edit Button" class="text-blue-400 hover:text-blue-300 px-1 cursor-pointer">
                     <i class="fa-solid fa-pen text-[10px]"></i>
                   </button>
-                  <button type="button" onclick="deleteButtonFromSection('${escapeHtml(sec.id)}', ${iIdx})" title="Delete Option" class="text-red-400 hover:text-red-300 font-bold px-1 cursor-pointer">
+                  <button type="button" onclick="deleteButtonFromSection('${escapeHtml(sec.id)}', ${iIdx})" title="Delete Button" class="text-red-400 hover:text-red-300 font-bold px-1 cursor-pointer">
                     &times;
                   </button>
                 </div>
@@ -2614,7 +2515,7 @@
     function buildFullWebsiteHTML() {
       const docClone = document.documentElement.cloneNode(true);
 
-      ["loginModal", "adminModal", "mobileMenuDrawer", "playerModal", "mobileActiveDropdownBox"].forEach(id => {
+      ["loginModal", "adminModal", "mobileMenuDrawer", "playerModal"].forEach(id => {
         const el = docClone.querySelector("#" + id);
         if (el) el.classList.add("hidden");
       });
