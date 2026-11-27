@@ -11034,16 +11034,21 @@ https://example.com/480p`;
         };
       }
     })();
-    // ================= IMP & INFO TOPBAR DRAWERS (GROUPS, MULTI-LINKS & INFO-ONLY TAGS) =================
+    // ================= IMP & INFO (TOPBAR RIGHT-MOBILE + MODAL + ADMIN TAB) =================
     (function () {
+      function safeEsc(str) {
+        if (typeof escapeHtml === "function") return escapeHtml(str ?? "");
+        return String(str ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
       function ensureImpInfoData() {
         if (!window.appData) return;
-        if (!Array.isArray(appData.impNotes)) {
-          appData.impNotes = [];
-        }
-        if (!Array.isArray(appData.infoNotes)) {
-          appData.infoNotes = [];
-        }
+        if (!Array.isArray(appData.impNotes)) appData.impNotes = [];
+        if (!Array.isArray(appData.infoNotes)) appData.infoNotes = [];
       }
 
       if (typeof normalizeAppData === "function") {
@@ -11087,12 +11092,12 @@ https://example.com/480p`;
         return Array.from(set);
       }
 
-      function createStylesAndModals() {
-        if (!document.getElementById("impInfoModalStyle")) {
-          const style = document.createElement("style");
-          style.id = "impInfoModalStyle";
-          style.textContent = `
-            .hub-pill-btn {
+      function placeImpInfoButtons() {
+        if (!document.getElementById("impInfoStyleTag")) {
+          const st = document.createElement("style");
+          st.id = "impInfoStyleTag";
+          st.textContent = `
+            .hub-top-pill {
               font-size: 10px;
               font-weight: 800;
               letter-spacing: 0.04em;
@@ -11100,124 +11105,137 @@ https://example.com/480p`;
               border-radius: 6px;
               line-height: 1.1;
               cursor: pointer;
-              transition: all 0.15s ease;
               white-space: nowrap;
+              transition: all 0.15s ease;
+            }
+            @media (max-width: 639px) {
+              #navbar > div.flex.items-center.flex-shrink-0 {
+                position: relative;
+                padding-top: 1.55rem;
+              }
+              #topBarImpInfoRow {
+                position: absolute;
+                top: 0;
+                right: 0;
+                display: flex !important;
+                align-items: center;
+                gap: 5px;
+              }
             }
           `;
-          document.head.appendChild(style);
+          document.head.appendChild(st);
         }
 
-        const titleSpan = document.getElementById("navSiteTitle");
-        if (titleSpan && !document.getElementById("topBarImpBtn")) {
-          const wrap = document.createElement("div");
-          wrap.className = "flex items-center gap-1 flex-shrink-0 ml-0.5";
-          wrap.innerHTML = `
+        const rightControls = document.querySelector("#navbar > div.flex.items-center.flex-shrink-0");
+        if (rightControls && !document.getElementById("topBarImpInfoRow")) {
+          const row = document.createElement("div");
+          row.id = "topBarImpInfoRow";
+          row.className = "hidden sm:flex items-center gap-1 flex-shrink-0 mr-0.5";
+          row.innerHTML = `
             <button type="button" id="topBarImpBtn" onclick="openImpInfoDrawer('imp')" title="Important Notes & Links"
-              class="hub-pill-btn bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/50">
+              class="hub-top-pill bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/50">
               IMP
             </button>
-            <button type="button" id="topBarInfoBtn" onclick="openImpInfoDrawer('info')" title="Daily Info, Updates & Tags"
-              class="hub-pill-btn bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-black border border-sky-500/50">
+            <button type="button" id="topBarInfoBtn" onclick="openImpInfoDrawer('info')" title="Daily Updates, Links & Tags"
+              class="hub-top-pill bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-black border border-sky-500/50">
               INFO
             </button>
           `;
-          titleSpan.parentElement.insertAdjacentElement("afterend", wrap);
+          rightControls.prepend(row);
         }
+      }
 
-        if (!document.getElementById("impInfoDrawerModal")) {
-          const modal = document.createElement("div");
-          modal.id = "impInfoDrawerModal";
-          modal.className = "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto";
-          modal.innerHTML = `
-            <div class="theme-surface border rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl my-auto">
-              <div class="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-800 bg-[#101017]">
-                <div class="flex items-center gap-2.5">
-                  <span id="drawerBadgeIcon" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold"></span>
+      function ensureDrawerModalExists() {
+        if (document.getElementById("impInfoDrawerModal")) return;
+        const modal = document.createElement("div");
+        modal.id = "impInfoDrawerModal";
+        modal.style.display = "none";
+        modal.className = "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm items-center justify-center p-2 sm:p-4 overflow-y-auto";
+        modal.innerHTML = `
+          <div class="theme-surface border rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl my-auto">
+            <div class="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-800 bg-[#101017]">
+              <div class="flex items-center gap-2.5">
+                <span id="drawerBadgeIcon" class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold"></span>
+                <div>
+                  <h3 id="drawerHeadingTitle" class="font-extrabold text-sm sm:text-base"></h3>
+                  <p id="drawerHeadingSub" class="text-[11px] text-gray-400"></p>
+                </div>
+              </div>
+              <button type="button" onclick="closeImpInfoDrawer()" class="text-gray-400 hover:text-white text-lg px-2 py-1 cursor-pointer">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+
+            <div class="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1">
+              <div class="bg-[#161620] border border-gray-800 rounded-xl p-3.5 sm:p-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <span id="drawerFormModeLabel" class="text-xs font-bold uppercase tracking-wider text-gray-300">Add Entry</span>
+                  <button type="button" id="drawerCancelEditBtn" onclick="resetDrawerForm()" style="display:none;" class="text-[11px] text-amber-400 hover:underline cursor-pointer">
+                    Cancel Edit
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <h3 id="drawerHeadingTitle" class="font-extrabold text-sm sm:text-base"></h3>
-                    <p id="drawerHeadingSub" class="text-[11px] text-gray-400"></p>
+                    <label class="block text-[11px] text-gray-400 mb-1">Group</label>
+                    <div class="flex gap-1.5">
+                      <select id="drawerGroupSelect" class="theme-input border rounded-lg px-2.5 py-2 text-xs flex-1 outline-none"></select>
+                      <input type="text" id="drawerCustomGroupInput" placeholder="Ya naya group..." class="theme-input border rounded-lg px-2.5 py-2 text-xs w-32 sm:w-36 outline-none">
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">Title / Heading</label>
+                    <input type="text" id="drawerEntryTitle" placeholder="Short heading likhein..." class="theme-input border rounded-lg px-3 py-2 text-xs w-full outline-none">
                   </div>
                 </div>
-                <button type="button" onclick="closeImpInfoDrawer()" class="text-gray-400 hover:text-white text-lg px-2 py-1 cursor-pointer">
-                  <i class="fa-solid fa-xmark"></i>
-                </button>
+
+                <div>
+                  <label class="block text-[11px] text-gray-400 mb-1">Description</label>
+                  <textarea id="drawerEntryDesc" rows="3" placeholder="Description ya update likhein..." class="theme-input border rounded-lg px-3 py-2 text-xs w-full outline-none"></textarea>
+                </div>
+
+                <div class="space-y-2 pt-1">
+                  <div class="flex items-center justify-between">
+                    <label class="text-[11px] font-semibold text-gray-300">Links (Kitne bhi add karein — Photo, News, Article, Website)</label>
+                    <button type="button" onclick="addDrawerLinkRow()" class="text-[11px] bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 px-2.5 py-1 rounded-lg font-semibold cursor-pointer transition">
+                      + Add Link
+                    </button>
+                  </div>
+                  <div id="drawerLinksContainer" class="space-y-2"></div>
+                </div>
+
+                <div id="drawerInfoTagsBox" style="display:none;" class="space-y-2 pt-2 border-t border-gray-800">
+                  <label class="block text-[11px] font-semibold text-sky-300">Tags (Sirf INFO ke liye — Kitne bhi add karein)</label>
+                  <div class="flex gap-2">
+                    <input type="text" id="drawerNewTagInput" onkeydown="if(event.key==='Enter'){event.preventDefault();addDrawerInfoTag();}" placeholder="Tag likh kar Add dabayein..." class="theme-input border rounded-lg px-3 py-1.5 text-xs flex-1 outline-none">
+                    <button type="button" onclick="addDrawerInfoTag()" class="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer">
+                      Add Tag
+                    </button>
+                  </div>
+                  <div id="drawerDraftTagsList" class="flex flex-wrap gap-1.5 min-h-[24px]"></div>
+                </div>
+
+                <div class="pt-1 flex justify-end">
+                  <button type="button" id="drawerSaveBtn" onclick="saveDrawerEntry()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition">
+                    Save
+                  </button>
+                </div>
               </div>
 
-              <div class="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1">
-                <!-- Form Card -->
-                <div class="bg-[#161620] border border-gray-800 rounded-xl p-3.5 sm:p-4 space-y-3">
-                  <div class="flex items-center justify-between">
-                    <span id="drawerFormModeLabel" class="text-xs font-bold uppercase tracking-wider text-gray-300">Add New Entry</span>
-                    <button type="button" id="drawerCancelEditBtn" onclick="resetDrawerForm()" class="hidden text-[11px] text-amber-400 hover:underline cursor-pointer">
-                      Cancel Edit
-                    </button>
+              <div class="space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-gray-300">Saved (<span id="drawerEntriesCount">0</span>)</span>
+                    <select id="drawerGroupFilter" onchange="selectedFilterGroup = this.value; renderDrawerEntries();" class="theme-input border rounded-lg px-2.5 py-1 text-xs outline-none"></select>
                   </div>
-
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label class="block text-[11px] text-gray-400 mb-1">Group Name</label>
-                      <div class="flex gap-1.5">
-                        <select id="drawerGroupSelect" class="theme-input border rounded-lg px-2.5 py-2 text-xs flex-1 outline-none"></select>
-                        <input type="text" id="drawerCustomGroupInput" placeholder="Ya naya group..." class="theme-input border rounded-lg px-2.5 py-2 text-xs w-32 sm:w-36 outline-none">
-                      </div>
-                    </div>
-                    <div>
-                      <label class="block text-[11px] text-gray-400 mb-1">Heading / Short Title</label>
-                      <input type="text" id="drawerEntryTitle" placeholder="Jaise: Kal 1080p link update karna hai..." class="theme-input border rounded-lg px-3 py-2 text-xs w-full outline-none">
-                    </div>
-                  </div>
-
-                  <div>
-                    <label class="block text-[11px] text-gray-400 mb-1">Description / Details</label>
-                    <textarea id="drawerEntryDesc" rows="3" placeholder="Yahan apni description ya daily update likhein..." class="theme-input border rounded-lg px-3 py-2 text-xs w-full outline-none"></textarea>
-                  </div>
-
-                  <!-- Multiple Links Builder -->
-                  <div class="space-y-2 pt-1">
-                    <div class="flex items-center justify-between">
-                      <label class="text-[11px] font-semibold text-gray-300">Links (Photo, News, Article, Website — Kitne bhi add karein)</label>
-                      <button type="button" onclick="addDrawerLinkRow()" class="text-[11px] bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 px-2.5 py-1 rounded-lg font-semibold cursor-pointer transition">
-                        + Add Link
-                      </button>
-                    </div>
-                    <div id="drawerLinksContainer" class="space-y-2"></div>
-                  </div>
-
-                  <!-- Tags Section (ONLY visible inside INFO mode) -->
-                  <div id="drawerInfoTagsBox" class="hidden space-y-2 pt-2 border-t border-gray-800">
-                    <label class="block text-[11px] font-semibold text-sky-300">Tags (Sirf INFO ke liye — Kitne bhi add karein)</label>
-                    <div class="flex gap-2">
-                      <input type="text" id="drawerNewTagInput" onkeydown="if(event.key==='Enter'){event.preventDefault();addDrawerInfoTag();}" placeholder="Tag likh kar Add dabayein (e.g. Trending, Oct 2026)..." class="theme-input border rounded-lg px-3 py-1.5 text-xs flex-1 outline-none">
-                      <button type="button" onclick="addDrawerInfoTag()" class="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer">
-                        Add Tag
-                      </button>
-                    </div>
-                    <div id="drawerDraftTagsList" class="flex flex-wrap gap-1.5 min-h-[24px]"></div>
-                  </div>
-
-                  <div class="pt-1 flex justify-end">
-                    <button type="button" id="drawerSaveBtn" onclick="saveDrawerEntry()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition">
-                      Save Entry
-                    </button>
-                  </div>
+                  <select id="drawerTagFilter" style="display:none;" onchange="selectedInfoTagFilter = this.value; renderDrawerEntries();" class="theme-input border rounded-lg px-2.5 py-1 text-xs outline-none"></select>
                 </div>
-
-                <!-- Filters & Saved Entries -->
-                <div class="space-y-3">
-                  <div class="flex flex-wrap items-center justify-between gap-2">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs font-bold text-gray-300">Saved Items (<span id="drawerEntriesCount">0</span>)</span>
-                      <select id="drawerGroupFilter" onchange="selectedFilterGroup = this.value; renderDrawerEntries();" class="theme-input border rounded-lg px-2.5 py-1 text-xs outline-none"></select>
-                    </div>
-                    <select id="drawerTagFilter" onchange="selectedInfoTagFilter = this.value; renderDrawerEntries();" class="hidden theme-input border rounded-lg px-2.5 py-1 text-xs outline-none"></select>
-                  </div>
-                  <div id="drawerEntriesList" class="space-y-2.5"></div>
-                </div>
+                <div id="drawerEntriesList" class="space-y-2.5"></div>
               </div>
             </div>
-          `;
-          document.body.appendChild(modal);
-        }
+          </div>
+        `;
+        document.body.appendChild(modal);
       }
 
       function populateGroupSelect() {
@@ -11227,22 +11245,22 @@ https://example.com/480p`;
 
         const groups = getAllGroupsForMode();
         const prevVal = sel.value || groups[0] || "General";
-        sel.innerHTML = groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
+        sel.innerHTML = groups.map(g => `<option value="${safeEsc(g)}">${safeEsc(g)}</option>`).join("");
         if (groups.includes(prevVal)) sel.value = prevVal;
 
         const prevFilter = selectedFilterGroup;
-        filterSel.innerHTML = `<option value="ALL">All Groups</option>` + groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
+        filterSel.innerHTML = `<option value="ALL">All Groups</option>` + groups.map(g => `<option value="${safeEsc(g)}">${safeEsc(g)}</option>`).join("");
         filterSel.value = (prevFilter === "ALL" || groups.includes(prevFilter)) ? prevFilter : "ALL";
 
         const tagFilterSel = document.getElementById("drawerTagFilter");
         if (tagFilterSel) {
           if (activeMode === "info") {
             const tags = getAllTagsForInfo();
-            tagFilterSel.classList.remove("hidden");
-            tagFilterSel.innerHTML = `<option value="ALL">All Tags</option>` + tags.map(t => `<option value="${escapeHtml(t)}">#${escapeHtml(t)}</option>`).join("");
+            tagFilterSel.style.display = "inline-block";
+            tagFilterSel.innerHTML = `<option value="ALL">All Tags</option>` + tags.map(t => `<option value="${safeEsc(t)}">#${safeEsc(t)}</option>`).join("");
             tagFilterSel.value = (selectedInfoTagFilter === "ALL" || tags.includes(selectedInfoTagFilter)) ? selectedInfoTagFilter : "ALL";
           } else {
-            tagFilterSel.classList.add("hidden");
+            tagFilterSel.style.display = "none";
             selectedInfoTagFilter = "ALL";
           }
         }
@@ -11252,14 +11270,14 @@ https://example.com/480p`;
         const box = document.getElementById("drawerLinksContainer");
         if (!box) return;
         if (draftLinks.length === 0) {
-          box.innerHTML = `<p class="text-[11px] text-gray-500 italic">Koi link add nahi hai. "+ Add Link" par click karke link jodein.</p>`;
+          box.innerHTML = `<p class="text-[11px] text-gray-500 italic">Koi link add nahi hai. "+ Add Link" par click karein.</p>`;
           return;
         }
         box.innerHTML = draftLinks.map((lnk, i) => `
           <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-[#101017] p-2 rounded-lg border border-gray-800">
-            <input type="text" value="${escapeHtml(lnk.label || "")}" oninput="draftLinks[${i}].label = this.value"
-              placeholder="Label (e.g. News Link / Photo / Article)" class="sm:col-span-4 theme-input border rounded px-2.5 py-1.5 text-xs outline-none">
-            <input type="url" value="${escapeHtml(lnk.url || "")}" oninput="draftLinks[${i}].url = this.value"
+            <input type="text" value="${safeEsc(lnk.label || "")}" oninput="draftLinks[${i}].label = this.value"
+              placeholder="Label (Photo / News / Article)" class="sm:col-span-4 theme-input border rounded px-2.5 py-1.5 text-xs outline-none">
+            <input type="url" value="${safeEsc(lnk.url || "")}" oninput="draftLinks[${i}].url = this.value"
               placeholder="https://..." class="sm:col-span-7 theme-input border rounded px-2.5 py-1.5 text-xs outline-none">
             <button type="button" onclick="removeDrawerLinkRow(${i})" title="Remove Link"
               class="sm:col-span-1 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white h-8 rounded flex items-center justify-center text-xs cursor-pointer">
@@ -11284,12 +11302,12 @@ https://example.com/480p`;
         const box = document.getElementById("drawerDraftTagsList");
         if (!box) return;
         if (draftInfoTags.length === 0) {
-          box.innerHTML = `<span class="text-[11px] text-gray-500">Koi tag select nahi hai.</span>`;
+          box.innerHTML = `<span class="text-[11px] text-gray-500">Koi tag add nahi hai.</span>`;
           return;
         }
         box.innerHTML = draftInfoTags.map((tag, i) => `
           <span class="inline-flex items-center gap-1 bg-sky-500/20 text-sky-300 border border-sky-500/40 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-            <span>#${escapeHtml(tag)}</span>
+            <span>#${safeEsc(tag)}</span>
             <button type="button" onclick="removeDraftInfoTag(${i})" class="hover:text-white cursor-pointer">&times;</button>
           </span>
         `).join("");
@@ -11329,8 +11347,8 @@ https://example.com/480p`;
         if (dInp) dInp.value = "";
         if (gInp) gInp.value = "";
         if (tagInp) tagInp.value = "";
-        if (modeLbl) modeLbl.textContent = activeMode === "info" ? "Add New INFO Update" : "Add New IMP Note";
-        if (cancelBtn) cancelBtn.classList.add("hidden");
+        if (modeLbl) modeLbl.textContent = activeMode === "info" ? "Add INFO Update" : "Add IMP Note";
+        if (cancelBtn) cancelBtn.style.display = "none";
         if (saveBtn) saveBtn.textContent = activeMode === "info" ? "Save INFO" : "Save IMP";
 
         populateGroupSelect();
@@ -11370,11 +11388,8 @@ https://example.com/480p`;
 
         if (editingEntryId) {
           const idx = list.findIndex(x => x.id === editingEntryId);
-          if (idx !== -1) {
-            list[idx] = { ...list[idx], ...entryData };
-          } else {
-            list.unshift(entryData);
-          }
+          if (idx !== -1) list[idx] = { ...list[idx], ...entryData };
+          else list.unshift(entryData);
         } else {
           list.unshift(entryData);
         }
@@ -11382,9 +11397,13 @@ https://example.com/480p`;
         saveDataToStorage();
         resetDrawerForm();
         renderDrawerEntries();
+        renderAdminImpInfoTab();
       };
 
-      window.editDrawerEntry = function (id) {
+      window.editDrawerEntry = function (id, forcedMode = null) {
+        if (forcedMode) {
+          openImpInfoDrawer(forcedMode);
+        }
         const list = getCurrentList();
         const item = list.find(x => x.id === id);
         if (!item) return;
@@ -11401,24 +11420,26 @@ https://example.com/480p`;
         draftInfoTags = activeMode === "info" && Array.isArray(item.tags) ? [...item.tags] : [];
 
         document.getElementById("drawerFormModeLabel").textContent = "Edit Entry";
-        document.getElementById("drawerCancelEditBtn").classList.remove("hidden");
-        document.getElementById("drawerSaveBtn").textContent = "Update Entry";
+        document.getElementById("drawerCancelEditBtn").style.display = "inline";
+        document.getElementById("drawerSaveBtn").textContent = "Update";
 
         renderDrawerLinksBuilder();
         renderDraftInfoTags();
       };
 
-      window.deleteDrawerEntry = function (id) {
+      window.deleteDrawerEntry = function (id, modeOverride = null) {
         if (!confirm("Is entry ko delete karein?")) return;
         ensureImpInfoData();
-        if (activeMode === "info") {
+        const targetMode = modeOverride || activeMode;
+        if (targetMode === "info") {
           appData.infoNotes = appData.infoNotes.filter(x => x.id !== id);
         } else {
           appData.impNotes = appData.impNotes.filter(x => x.id !== id);
         }
         if (editingEntryId === id) resetDrawerForm();
         saveDataToStorage();
-        renderDrawerEntries();
+        if (activeMode) renderDrawerEntries();
+        renderAdminImpInfoTab();
       };
 
       window.renderDrawerEntries = function () {
@@ -11438,40 +11459,40 @@ https://example.com/480p`;
         if (!container) return;
 
         if (filtered.length === 0) {
-          container.innerHTML = `<p class="text-xs text-gray-500 italic py-3">Is filter mein koi entry nahi mili.</p>`;
+          container.innerHTML = `<p class="text-xs text-gray-500 italic py-3">Koi entry nahi mili.</p>`;
           return;
         }
 
         container.innerHTML = filtered.map(item => {
           const linksHtml = (item.links && item.links.length > 0)
             ? `<div class="flex flex-wrap gap-1.5 mt-2.5">` + item.links.map((lnk, idx) => {
-                const safeUrl = escapeHtml(lnk.url);
-                const lbl = escapeHtml(lnk.label || ("Link " + (idx + 1)));
+                const safeUrl = safeEsc(lnk.url);
+                const lbl = safeEsc(lnk.label || ("Link " + (idx + 1)));
                 return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 px-2.5 py-1 rounded-lg transition"><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i><span>${lbl}</span></a>`;
               }).join("") + `</div>`
             : "";
 
           const tagsHtml = (activeMode === "info" && Array.isArray(item.tags) && item.tags.length > 0)
-            ? `<div class="flex flex-wrap gap-1 mt-2">` + item.tags.map(t => `<span class="text-[10px] bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">#${escapeHtml(t)}</span>`).join("") + `</div>`
+            ? `<div class="flex flex-wrap gap-1 mt-2">` + item.tags.map(t => `<span class="text-[10px] bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">#${safeEsc(t)}</span>`).join("") + `</div>`
             : "";
 
           return `
             <div class="bg-[#161620] border border-gray-800 rounded-xl p-3.5">
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
-                  <span class="inline-block text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-gray-800 text-amber-300 mb-1">${escapeHtml(item.group || "General")}</span>
-                  ${item.title ? `<h4 class="font-bold text-xs sm:text-sm text-white">${escapeHtml(item.title)}</h4>` : ""}
+                  <span class="inline-block text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-gray-800 text-amber-300 mb-1">${safeEsc(item.group || "General")}</span>
+                  ${item.title ? `<h4 class="font-bold text-xs sm:text-sm text-white">${safeEsc(item.title)}</h4>` : ""}
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
-                  <button type="button" onclick="editDrawerEntry('${escapeHtml(item.id)}')" title="Edit" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs cursor-pointer">
+                  <button type="button" onclick="editDrawerEntry('${safeEsc(item.id)}')" title="Edit" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs cursor-pointer">
                     <i class="fa-solid fa-pen"></i>
                   </button>
-                  <button type="button" onclick="deleteDrawerEntry('${escapeHtml(item.id)}')" title="Delete" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs cursor-pointer">
+                  <button type="button" onclick="deleteDrawerEntry('${safeEsc(item.id)}')" title="Delete" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs cursor-pointer">
                     <i class="fa-solid fa-trash"></i>
                   </button>
                 </div>
               </div>
-              ${item.description ? `<p class="text-xs text-gray-300 mt-1.5 whitespace-pre-line">${escapeHtml(item.description)}</p>` : ""}
+              ${item.description ? `<p class="text-xs text-gray-300 mt-1.5 whitespace-pre-line">${safeEsc(item.description)}</p>` : ""}
               ${linksHtml}
               ${tagsHtml}
             </div>
@@ -11480,7 +11501,8 @@ https://example.com/480p`;
       };
 
       window.openImpInfoDrawer = function (mode) {
-        createStylesAndModals();
+        placeImpInfoButtons();
+        ensureDrawerModalExists();
         activeMode = mode === "info" ? "info" : "imp";
         selectedFilterGroup = "ALL";
         selectedInfoTagFilter = "ALL";
@@ -11494,35 +11516,109 @@ https://example.com/480p`;
           badge.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/40";
           badge.textContent = "INFO";
           titleEl.textContent = "INFO — Daily Updates, Links & Tags";
-          subEl.textContent = "Roz ke naye updates, movie dates, photo/news/article links aur tags manage karein.";
-          tagsBox.classList.remove("hidden");
+          subEl.textContent = "Roz ke naye updates, links aur sirf INFO wale tags manage karein.";
+          tagsBox.style.display = "block";
         } else {
           badge.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40";
           badge.textContent = "IMP";
-          titleEl.textContent = "IMP — Important Notes & Link Groups";
+          titleEl.textContent = "IMP — Important Notes & Groups";
           subEl.textContent = "Zaroori notes, groups aur links yahan save karein.";
-          tagsBox.classList.add("hidden");
+          tagsBox.style.display = "none";
         }
 
         resetDrawerForm();
         renderDrawerEntries();
-        document.getElementById("impInfoDrawerModal").classList.remove("hidden");
+        const modal = document.getElementById("impInfoDrawerModal");
+        modal.style.display = "flex";
       };
 
       window.closeImpInfoDrawer = function () {
         const modal = document.getElementById("impInfoDrawerModal");
-        if (modal) modal.classList.add("hidden");
+        if (modal) modal.style.display = "none";
         activeMode = null;
         editingEntryId = null;
       };
+
+      // Admin Panel integration tab for managing IMP & INFO directly from Admin Panel
+      function renderAdminImpInfoTab() {
+        ensureImpInfoData();
+        const backupBtn = document.getElementById("tabBtn-backup");
+        if (backupBtn && !document.getElementById("tabBtn-impinfo")) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.id = "tabBtn-impinfo";
+          btn.setAttribute("onclick", "switchAdminTab('impinfo')");
+          btn.className = "admin-tab px-3 py-2 sm:px-3.5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border sm:border-0 sm:border-b-2 text-amber-300 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer whitespace-nowrap border-gray-800 sm:border-transparent text-gray-400";
+          btn.innerHTML = `<i class="fa-solid fa-thumbtack"></i> <span>IMP &amp; INFO</span>`;
+          backupBtn.parentElement.insertBefore(btn, backupBtn);
+        }
+
+        const backupPanel = document.getElementById("tab-backup");
+        if (backupPanel && !document.getElementById("tab-impinfo")) {
+          const panel = document.createElement("div");
+          panel.id = "tab-impinfo";
+          panel.className = "admin-panel space-y-5 hidden";
+          panel.innerHTML = `
+            <div class="bg-[#1a1a24] p-4 sm:p-5 rounded-xl border border-gray-800 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 class="font-bold text-base">IMP &amp; INFO Manager</h3>
+                  <p class="text-xs text-gray-400">Yahan se IMP aur INFO ke groups, descriptions, links aur INFO tags add/edit karein.</p>
+                </div>
+                <div class="flex gap-2">
+                  <button type="button" onclick="openImpInfoDrawer('imp')" class="bg-amber-500 hover:bg-amber-400 text-black font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer">+ New IMP</button>
+                  <button type="button" onclick="openImpInfoDrawer('info')" class="bg-sky-500 hover:bg-sky-400 text-black font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer">+ New INFO</button>
+                </div>
+              </div>
+              <div id="adminImpInfoSummaryList" class="space-y-2.5"></div>
+            </div>
+          `;
+          backupPanel.parentElement.appendChild(panel);
+        }
+
+        const listBox = document.getElementById("adminImpInfoSummaryList");
+        if (!listBox) return;
+
+        const combined = [
+          ...(appData.impNotes || []).map(x => ({ ...x, _mode: "imp" })),
+          ...(appData.infoNotes || []).map(x => ({ ...x, _mode: "info" }))
+        ];
+
+        if (combined.length === 0) {
+          listBox.innerHTML = `<p class="text-xs text-gray-500 italic">Abhi koi IMP ya INFO entry nahi hai.</p>`;
+          return;
+        }
+
+        listBox.innerHTML = combined.map(item => `
+          <div class="flex items-center justify-between bg-[#101017] p-3 rounded-xl border border-gray-800 gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <span class="text-[10px] font-extrabold px-2 py-0.5 rounded uppercase ${item._mode === "info" ? "bg-sky-500/20 text-sky-300" : "bg-amber-500/20 text-amber-300"}">${item._mode.toUpperCase()}</span>
+                <span class="text-[11px] text-gray-400">${safeEsc(item.group || "General")}</span>
+              </div>
+              <h4 class="font-bold text-xs sm:text-sm truncate">${safeEsc(item.title || item.description || "Untitled")}</h4>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button type="button" onclick="editDrawerEntry('${safeEsc(item.id)}', '${item._mode}')" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button type="button" onclick="deleteDrawerEntry('${safeEsc(item.id)}', '${item._mode}')" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        `).join("");
+      }
 
       if (typeof refreshAllUI === "function") {
         const origRefresh = refreshAllUI;
         refreshAllUI = function () {
           ensureImpInfoData();
-          createStylesAndModals();
+          placeImpInfoButtons();
+          ensureDrawerModalExists();
+          renderAdminImpInfoTab();
           const res = origRefresh.apply(this, arguments);
-          if (activeMode && !document.getElementById("impInfoDrawerModal")?.classList.contains("hidden")) {
+          if (activeMode && document.getElementById("impInfoDrawerModal")?.style.display === "flex") {
             renderDrawerEntries();
           }
           return res;
@@ -11530,7 +11626,9 @@ https://example.com/480p`;
       }
 
       ensureImpInfoData();
-      createStylesAndModals();
+      placeImpInfoButtons();
+      ensureDrawerModalExists();
+      renderAdminImpInfoTab();
     })();
     // Initialize
     initColorTheme();
