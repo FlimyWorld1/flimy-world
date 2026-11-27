@@ -10104,6 +10104,10 @@ https://example.com/480p`;
               </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
+            <button type="button" onclick="m.hidden = !m.hidden; saveDataToStorage();" title="${m.hidden ? 'Unhide' : 'Hide'}"
+  class="${m.hidden ? 'bg-yellow-500 text-black' : 'bg-gray-800 text-gray-300'} w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer">
+  <i class="fa-solid ${m.hidden ? 'fa-eye-slash' : 'fa-eye'}"></i>
+</button>
               <button type="button" data-action="edit" data-id="${escapeHtml(m.id)}"
                 class="admin-movie-action bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer">
                 <i class="fa-solid fa-pen pointer-events-none"></i>
@@ -10615,107 +10619,4 @@ https://example.com/480p`;
 <span data-test-id="pinterest-save-button" style="border-radius:10px !important;text-indent:12px !important;width:auto !important;height:20px !important;padding:0px 8px !important;text-align:center !important;vertical-align:middle !important;font:bold 11px / 20px &quot;Helvetica Neue&quot;, Helvetica, sans-serif !important;color:rgb(255, 255, 255) !important;background:url(&quot;data:image/svg+xml;base64,PHN2ZyBpZD0ic291cmNlIiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNiIgY3k9IjYiIHI9IjYiIGZpbGw9IiNFNjAwMjMiPjwvY2lyY2xlPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNkMwIDguNTYxNSAxLjYwNTUgMTAuNzQ4NSAzLjg2NSAxMS42MDlDMy44MSAxMS4xNDA1IDMuNzUxNSAxMC4zNjggMy44Nzc1IDkuODI2QzMuOTg2IDkuMzYgNC41NzggNi44NTcgNC41NzggNi44NTdDNC41NzggNi44NTcgNC4zOTk1IDYuNDk5NSA0LjM5OTUgNS45N0M0LjM5OTUgNS4xNCA0Ljg4MDUgNC41MiA1LjQ4IDQuNTJDNS45OSA0LjUyIDYuMjM2IDQuOTAyNSA2LjIzNiA1LjM2MUM2LjIzNiA1Ljg3MzUgNS45MDk1IDYuNjM5NSA1Ljc0MSA3LjM1QzUuNjAwNSA3Ljk0NDUgNi4wMzk1IDguNDI5NSA2LjYyNTUgOC40Mjk1QzcuNjg3IDguNDI5NSA4LjUwMzUgNy4zMSA4LjUwMzUgNS42OTRDOC41MDM1IDQuMjYzNSA3LjQ3NTUgMy4yNjQgNi4wMDggMy4yNjRDNC4zMDkgMy4yNjQgMy4zMTE1IDQuNTM4NSAzLjMxMTUgNS44NTZDMy4zMTE1IDYuMzY5NSAzLjUwOSA2LjkxOTUgMy43NTYgNy4yMTlDMy44MDQ1IDcuMjc4NSAzLjgxMiA3LjMzIDMuNzk3NSA3LjM5MDVDMy43NTIgNy41Nzk1IDMuNjUxIDcuOTg1IDMuNjMxNSA4LjA2OEMzLjYwNSA4LjE3NyAzLjU0NSA4LjIwMDUgMy40MzE1IDguMTQ3NUMyLjY4NTUgNy44MDA1IDIuMjE5NSA2LjcxIDIuMjE5NSA1LjgzNEMyLjIxOTUgMy45NDk1IDMuNTg4IDIuMjE5NSA2LjE2NTUgMi4yMTk1QzguMjM3NSAyLjIxOTUgOS44NDggMy42OTYgOS44NDggNS42NjlDOS44NDggNy43Mjc1IDguNTUwNSA5LjM4NDUgNi43NDg1IDkuMzg0NUM2LjE0MyA5LjM4NDUgNS41NzQ1IDkuMDY5NSA1LjM3OTUgOC42OThDNS4zNzk1IDguNjk4IDUuMDggOS44MzkgNS4wMDc1IDEwLjExOEM0Ljg2NjUgMTAuNjYgNC40NzU1IDExLjM0NiA0LjIzMyAxMS43MzU1QzQuNzkyIDExLjkwNzUgNS4zODUgMTIgNiAxMkM5LjMxMzUgMTIgMTIgOS4zMTM1IDEyIDZDMTIgMi42ODY1IDkuMzEzNSAwIDYgMEMyLjY4NjUgMCAwIDIuNjg2NSAwIDZaIiBmaWxsPSJ3aGl0ZSI+PC9wYXRoPgo8L3N2Zz4=&quot;) 4px 50% / 12px 12px no-repeat rgb(230, 0, 35) !important;position:absolute !important;opacity:1 !important;z-index:9007199254740990 !important;display:none !important;cursor:pointer !important;border:none !important;-webkit-font-smoothing:antialiased !important;top:0 !important;left:0 !important;display:none !important;top:324px !important;left:59px !important">Save</span>
 <span data-test-id="pinterest-save-button" style="border-radius:10px !important;text-indent:12px !important;width:auto !important;height:20px !important;padding:0px 8px !important;text-align:center !important;vertical-align:middle !important;font:bold 11px / 20px &quot;Helvetica Neue&quot;, Helvetica, sans-serif !important;color:rgb(255, 255, 255) !important;background:url(&quot;data:image/svg+xml;base64,PHN2ZyBpZD0ic291cmNlIiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNiIgY3k9IjYiIHI9IjYiIGZpbGw9IiNFNjAwMjMiPjwvY2lyY2xlPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNkMwIDguNTYxNSAxLjYwNTUgMTAuNzQ4NSAzLjg2NSAxMS42MDlDMy44MSAxMS4xNDA1IDMuNzUxNSAxMC4zNjggMy44Nzc1IDkuODI2QzMuOTg2IDkuMzYgNC41NzggNi44NTcgNC41NzggNi44NTdDNC41NzggNi44NTcgNC4zOTk1IDYuNDk5NSA0LjM5OTUgNS45N0M0LjM5OTUgNS4xNCA0Ljg4MDUgNC41MiA1LjQ4IDQuNTJDNS45OSA0LjUyIDYuMjM2IDQuOTAyNSA2LjIzNiA1LjM2MUM2LjIzNiA1Ljg3MzUgNS45MDk1IDYuNjM5NSA1Ljc0MSA3LjM1QzUuNjAwNSA3Ljk0NDUgNi4wMzk1IDguNDI5NSA2LjYyNTUgOC40Mjk1QzcuNjg3IDguNDI5NSA4LjUwMzUgNy4zMSA4LjUwMzUgNS42OTRDOC41MDM1IDQuMjYzNSA3LjQ3NTUgMy4yNjQgNi4wMDggMy4yNjRDNC4zMDkgMy4yNjQgMy4zMTE1IDQuNTM4NSAzLjMxMTUgNS44NTZDMy4zMTE1IDYuMzY5NSAzLjUwOSA2LjkxOTUgMy43NTYgNy4yMTlDMy44MDQ1IDcuMjc4NSAzLjgxMiA3LjMzIDMuNzk3NSA3LjM5MDVDMy43NTIgNy41Nzk1IDMuNjUxIDcuOTg1IDMuNjMxNSA4LjA2OEMzLjYwNSA4LjE3NyAzLjU0NSA4LjIwMDUgMy40MzE1IDguMTQ3NUMyLjY4NTUgNy44MDA1IDIuMjE5NSA2LjcxIDIuMjE5NSA1LjgzNEMyLjIxOTUgMy45NDk1IDMuNTg4IDIuMjE5NSA2LjE2NTUgMi4yMTk1QzguMjM3NSAyLjIxOTUgOS44NDggMy42OTYgOS44NDggNS42NjlDOS44NDggNy43Mjc1IDguNTUwNSA5LjM4NDUgNi43NDg1IDkuMzg0NUM2LjE0MyA5LjM4NDUgNS41NzQ1IDkuMDY5NSA1LjM3OTUgOC42OThDNS4zNzk1IDguNjk4IDUuMDggOS44MzkgNS4wMDc1IDEwLjExOEM0Ljg2NjUgMTAuNjYgNC40NzU1IDExLjM0NiA0LjIzMyAxMS43MzU1QzQuNzkyIDExLjkwNzUgNS4zODUgMTIgNiAxMkM5LjMxMzUgMTIgMTIgOS4zMTM1IDEyIDZDMTIgMi42ODY1IDkuMzEzNSAwIDYgMEMyLjY4NjUgMCAwIDIuNjg2NSAwIDZaIiBmaWxsPSJ3aGl0ZSI+PC9wYXRoPgo8L3N2Zz4=&quot;) 4px 50% / 12px 12px no-repeat rgb(230, 0, 35) !important;position:absolute !important;opacity:1 !important;z-index:9007199254740990 !important;display:none !important;cursor:pointer !important;border:none !important;-webkit-font-smoothing:antialiased !important;top:0 !important;left:0 !important;display:none !important;top:270px !important;left:737px !important">Save</span>
 <span data-test-id="pinterest-save-button" style="border-radius:10px !important;text-indent:12px !important;width:auto !important;height:20px !important;padding:0px 8px !important;text-align:center !important;vertical-align:middle !important;font:bold 11px / 20px &quot;Helvetica Neue&quot;, Helvetica, sans-serif !important;color:rgb(255, 255, 255) !important;background:url(&quot;data:image/svg+xml;base64,PHN2ZyBpZD0ic291cmNlIiB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNiIgY3k9IjYiIHI9IjYiIGZpbGw9IiNFNjAwMjMiPjwvY2lyY2xlPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNkMwIDguNTYxNSAxLjYwNTUgMTAuNzQ4NSAzLjg2NSAxMS42MDlDMy44MSAxMS4xNDA1IDMuNzUxNSAxMC4zNjggMy44Nzc1IDkuODI2QzMuOTg2IDkuMzYgNC41NzggNi44NTcgNC41NzggNi44NTdDNC41NzggNi44NTcgNC4zOTk1IDYuNDk5NSA0LjM5OTUgNS45N0M0LjM5OTUgNS4xNCA0Ljg4MDUgNC41MiA1LjQ4IDQuNTJDNS45OSA0LjUyIDYuMjM2IDQuOTAyNSA2LjIzNiA1LjM2MUM2LjIzNiA1Ljg3MzUgNS45MDk1IDYuNjM5NSA1Ljc0MSA3LjM1QzUuNjAwNSA3Ljk0NDUgNi4wMzk1IDguNDI5NSA2LjYyNTUgOC40Mjk1QzcuNjg3IDguNDI5NSA4LjUwMzUgNy4zMSA4LjUwMzUgNS42OTRDOC41MDM1IDQuMjYzNSA3LjQ3NTUgMy4yNjQgNi4wMDggMy4yNjRDNC4zMDkgMy4yNjQgMy4zMTE1IDQuNTM4NSAzLjMxMTUgNS44NTZDMy4zMTE1IDYuMzY5NSAzLjUwOSA2LjkxOTUgMy43NTYgNy4yMTlDMy44MDQ1IDcuMjc4NSAzLjgxMiA3LjMzIDMuNzk3NSA3LjM5MDVDMy43NTIgNy41Nzk1IDMuNjUxIDcuOTg1IDMuNjMxNSA4LjA2OEMzLjYwNSA4LjE3NyAzLjU0NSA4LjIwMDUgMy40MzE1IDguMTQ3NUMyLjY4NTUgNy44MDA1IDIuMjE5NSA2LjcxIDIuMjE5NSA1LjgzNEMyLjIxOTUgMy45NDk1IDMuNTg4IDIuMjE5NSA2LjE2NTUgMi4yMTk1QzguMjM3NSAyLjIxOTUgOS44NDggMy42OTYgOS44NDggNS42NjlDOS44NDggNy43Mjc1IDguNTUwNSA5LjM4NDUgNi43NDg1IDkuMzg0NUM2LjE0MyA5LjM4NDUgNS41NzQ1IDkuMDY5NSA1LjM3OTUgOC42OThDNS4zNzk1IDguNjk4IDUuMDggOS44MzkgNS4wMDc1IDEwLjExOEM0Ljg2NjUgMTAuNjYgNC40NzU1IDExLjM0NiA0LjIzMyAxMS43MzU1QzQuNzkyIDExLjkwNzUgNS4zODUgMTIgNiAxMkM5LjMxMzUgMTIgMTIgOS4zMTM1IDEyIDZDMTIgMi42ODY1IDkuMzEzNSAwIDYgMEMyLjY4NjUgMCAwIDIuNjg2NSAwIDZaIiBmaWxsPSJ3aGl0ZSI+PC9wYXRoPgo8L3N2Zz4=&quot;) 4px 50% / 12px 12px no-repeat rgb(230, 0, 35) !important;position:absolute !important;opacity:1 !important;z-index:9007199254740990 !important;display:none !important;cursor:pointer !important;border:none !important;-webkit-font-smoothing:antialiased !important;top:0 !important;left:0 !important;display:none !important;top:324px !important;left:301px !important">Save</span>
-<!-- ================= SIMPLE HIDE / UNHIDE CONTENT BUTTON ================= -->
-<script>
-  (function () {
-    function withPublicOnly(fn) {
-      return function (...args) {
-        const allMovies = appData.movies;
-        appData.movies = (allMovies || []).filter(m => !m.hidden);
-        try {
-          return fn.apply(this, args);
-        } finally {
-          appData.movies = allMovies;
-        }
-      };
-    }
-
-    if (typeof renderTopSlider === "function") renderTopSlider = withPublicOnly(renderTopSlider);
-    if (typeof renderHero === "function") renderHero = withPublicOnly(renderHero);
-    if (typeof renderContent === "function") renderContent = withPublicOnly(renderContent);
-    if (typeof renderMoreLikeThis === "function") renderMoreLikeThis = withPublicOnly(renderMoreLikeThis);
-
-    if (typeof openPlayerModal === "function") {
-      const origOpenPlayerModal = openPlayerModal;
-      openPlayerModal = function (id, ...rest) {
-        const target = (appData.movies || []).find(m => m.id === id);
-        if (target && target.hidden && !isAdminUnlocked) return;
-        return origOpenPlayerModal.call(this, id, ...rest);
-      };
-    }
-
-    if (typeof saveMovie === "function") {
-      const origSaveMovie = saveMovie;
-      saveMovie = function (e) {
-        const editId = document.getElementById("editMovieId")?.value;
-        const prev = editId ? (appData.movies || []).find(m => m.id === editId) : null;
-        const wasHidden = prev ? Boolean(prev.hidden) : false;
-        const res = origSaveMovie.call(this, e);
-        if (editId && wasHidden) {
-          const updated = (appData.movies || []).find(m => m.id === editId);
-          if (updated) {
-            updated.hidden = true;
-            saveDataToStorage();
-          }
-        }
-        return res;
-      };
-    }
-
-    window.toggleContentHide = function (id) {
-      const m = (appData.movies || []).find(item => item.id === id);
-      if (!m) return;
-      m.hidden = !m.hidden;
-      saveDataToStorage();
-    };
-
-    if (typeof renderAdminMovies === "function") {
-      const origRenderAdminMovies = renderAdminMovies;
-      renderAdminMovies = function () {
-        origRenderAdminMovies.apply(this, arguments);
-        const list = document.getElementById("adminMovieList");
-        if (!list) return;
-
-        Array.from(list.children).forEach(card => {
-          const editBtn = card.querySelector('[data-action="edit"]');
-          if (!editBtn) return;
-          const id = editBtn.getAttribute("data-id");
-          const movie = (appData.movies || []).find(m => m.id === id);
-          if (!movie) return;
-
-          const isHidden = Boolean(movie.hidden);
-          if (isHidden) {
-            card.style.borderColor = "#f59e0b";
-            card.style.opacity = "0.85";
-            const titleEl = card.querySelector("h4");
-            if (titleEl && !titleEl.querySelector(".hidden-pill-badge")) {
-              titleEl.insertAdjacentHTML("beforeend", ' <span class="hidden-pill-badge bg-yellow-500/20 text-yellow-400 border border-yellow-500/40 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ml-1">Hidden</span>');
-            }
-          }
-
-          if (!card.querySelector('[data-action="toggle-hide"]')) {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.setAttribute("data-action", "toggle-hide");
-            btn.setAttribute("data-id", id);
-            btn.title = isHidden ? "Unhide (Public ko dikhayein)" : "Hide (Public se chhupayein)";
-            btn.className = isHidden
-              ? "bg-yellow-500 text-black hover:bg-yellow-400 w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer font-bold"
-              : "bg-gray-800 text-gray-300 hover:bg-yellow-500/20 hover:text-yellow-400 w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer";
-            btn.innerHTML = `<i class="fa-solid ${isHidden ? "fa-eye-slash" : "fa-eye"} pointer-events-none"></i>`;
-            btn.onclick = function (e) {
-              e.stopPropagation();
-              window.toggleContentHide(id);
-            };
-            editBtn.parentElement.insertBefore(btn, editBtn);
-          }
-        });
-      };
-    }
-
-    if (typeof refreshAllUI === "function") {
-      refreshAllUI();
-    }
-  })();
-</script>
 </body></html>
