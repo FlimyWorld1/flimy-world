@@ -7342,10 +7342,47 @@ https://example.com/720p" class="w-full bg-[#101017] border border-gray-700 focu
         .replace(/'/g, "&#39;");
     }
 
+    const FIREBASE_DB_URL = "https://flimy-world-e825c-default-rtdb.firebaseio.com";
+
+    async function syncDataToCloud() {
+      if (!FIREBASE_DB_URL) return;
+      try {
+        await fetch(`${FIREBASE_DB_URL}/flimyWorldData.json`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(appData)
+        });
+      } catch (err) {
+        console.error("Cloud sync error:", err);
+      }
+    }
+
+    async function loadLiveCloudData() {
+      if (!FIREBASE_DB_URL) return;
+      try {
+        const res = await fetch(`${FIREBASE_DB_URL}/flimyWorldData.json?t=${Date.now()}`);
+        if (!res.ok) return;
+        const cloudData = await res.json();
+        if (cloudData && Array.isArray(cloudData.movies)) {
+          appData = cloudData;
+          normalizeAppData();
+          localStorage.setItem("flimyWorldDataV4", JSON.stringify(appData));
+          refreshAllUI();
+        } else if (isAdminUnlocked && appData.movies.length > 0) {
+          await syncDataToCloud();
+        }
+      } catch (err) {
+        console.warn("Using local data:", err);
+      }
+    }
+
     function saveDataToStorage() {
       normalizeAppData();
       localStorage.setItem("flimyWorldDataV4", JSON.stringify(appData));
       refreshAllUI();
+      if (isAdminUnlocked) {
+        syncDataToCloud();
+      }
     }
 
     function refreshAllUI() {
@@ -10947,6 +10984,7 @@ https://example.com/480p`;
     refreshAllUI();
     checkAdminTrigger();
     checkDirectMovieRoute();
+    loadLiveCloudData();
   </script>
 
 
