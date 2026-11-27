@@ -10346,7 +10346,29 @@ https://example.com/480p`;
       if (!val) return;
       if (!sec.items.includes(val)) {
         sec.items.push(val);
-        if (sec.kind === "category") appData.categories = [...sec.items];
+        if (sec.kind === "category") {
+          appData.categories = [...sec.items];
+          if (!Array.isArray(appData.homepageButtons)) appData.homepageButtons = [];
+          const existingHp = appData.homepageButtons.find(b => b.kind === "category" && b.value === val);
+          if (existingHp) {
+            existingHp.label = val;
+            existingHp.visible = true;
+          } else {
+            const topImdbIdx = appData.homepageButtons.findIndex(b => b.kind === "topimdb");
+            const newBtn = {
+              id: "hp_cat_" + val,
+              label: val,
+              kind: "category",
+              value: val,
+              visible: true
+            };
+            if (topImdbIdx !== -1) {
+              appData.homepageButtons.splice(topImdbIdx, 0, newBtn);
+            } else {
+              appData.homepageButtons.push(newBtn);
+            }
+          }
+        }
         if (sec.kind === "type") appData.types = [...sec.items];
         saveDataToStorage();
       }
@@ -10363,12 +10385,18 @@ https://example.com/480p`;
       sec.items[itemIdx] = trimmed;
 
       if (sec.kind === "category") {
-        const hpBtn = appData.homepageButtons.find(b => b.kind === "category" && b.value === oldVal);
+        const hpBtn = (appData.homepageButtons || []).find(b => b.kind === "category" && b.value === oldVal);
         if (hpBtn) {
           hpBtn.value = trimmed;
           hpBtn.label = trimmed;
           hpBtn.id = "hp_cat_" + trimmed;
         }
+      }
+
+      if (Array.isArray(appData.hiddenMenuItems)) {
+        appData.hiddenMenuItems = appData.hiddenMenuItems.map(hKey =>
+          hKey === sec.id + "::" + oldVal ? sec.id + "::" + trimmed : hKey
+        );
       }
 
       appData.movies.forEach(m => {
@@ -10391,9 +10419,19 @@ https://example.com/480p`;
     function deleteButtonFromSection(secId, itemIdx) {
       const sec = appData.sections.find(s => s.id === secId);
       if (!sec) return;
+      const removedVal = sec.items[itemIdx];
       sec.items.splice(itemIdx, 1);
-      if (sec.kind === "category") appData.categories = [...sec.items];
+
+      if (sec.kind === "category") {
+        appData.categories = [...sec.items];
+        appData.homepageButtons = (appData.homepageButtons || []).filter(
+          b => !(b.kind === "category" && b.value === removedVal)
+        );
+      }
       if (sec.kind === "type") appData.types = [...sec.items];
+      if (Array.isArray(appData.hiddenMenuItems)) {
+        appData.hiddenMenuItems = appData.hiddenMenuItems.filter(hKey => hKey !== sec.id + "::" + removedVal);
+      }
       saveDataToStorage();
     }
 
