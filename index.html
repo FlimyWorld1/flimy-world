@@ -10603,6 +10603,230 @@ https://example.com/480p`;
         };
       }
     })();
+    // ================= EYEBALL HIDE/UNHIDE ON CARDS + ADMIN VISIBILITY + HIDDEN TAB =================
+    (function () {
+      function forPublicViewersOnly(fn) {
+        return function (...args) {
+          if (isAdminUnlocked) {
+            return fn.apply(this, args);
+          }
+          const allMovies = appData.movies;
+          appData.movies = (allMovies || []).filter(m => !m.hidden);
+          try {
+            return fn.apply(this, args);
+          } finally {
+            appData.movies = allMovies;
+          }
+        };
+      }
+
+      if (typeof renderTopSlider === "function") renderTopSlider = forPublicViewersOnly(renderTopSlider);
+      if (typeof renderHero === "function") renderHero = forPublicViewersOnly(renderHero);
+      if (typeof renderContent === "function") renderContent = forPublicViewersOnly(renderContent);
+      if (typeof renderMoreLikeThis === "function") renderMoreLikeThis = forPublicViewersOnly(renderMoreLikeThis);
+
+      if (typeof openPlayerModal === "function") {
+        const origOpenPlayerModal = openPlayerModal;
+        openPlayerModal = function (id, ...rest) {
+          const target = (appData.movies || []).find(m => m.id === id);
+          if (target && target.hidden && !isAdminUnlocked) return;
+          return origOpenPlayerModal.call(this, id, ...rest);
+        };
+      }
+
+      if (typeof saveMovie === "function") {
+        const origSaveMovie = saveMovie;
+        saveMovie = function (e) {
+          const editId = document.getElementById("editMovieId")?.value;
+          const prev = editId ? (appData.movies || []).find(m => m.id === editId) : null;
+          const wasHidden = prev ? Boolean(prev.hidden) : false;
+          const res = origSaveMovie.call(this, e);
+          if (editId && wasHidden) {
+            const updated = (appData.movies || []).find(m => m.id === editId);
+            if (updated) {
+              updated.hidden = true;
+              saveDataToStorage();
+            }
+          }
+          return res;
+        };
+      }
+
+      window.quickToggleHideFromCard = function (id) {
+        const m = (appData.movies || []).find(item => item.id === id);
+        if (!m) return;
+        m.hidden = !m.hidden;
+        saveDataToStorage();
+      };
+
+      // 1. Add Eyeball Icon + HIDDEN Indicator on Main Website Poster Cards
+      if (typeof createMovieCard === "function") {
+        const origCreateMovieCard = createMovieCard;
+        createMovieCard = function (movie, rankBadge = null, isGridCard = false) {
+          let cardHtml = origCreateMovieCard.call(this, movie, rankBadge, isGridCard);
+          if (!isAdminUnlocked || !movie) return cardHtml;
+
+          const isHidden = Boolean(movie.hidden);
+          const eyeBtnHtml = `
+            <button type="button" onclick="quickToggleHideFromCard('${escapeHtml(movie.id)}')" title="${isHidden ? 'Unhide (Make Live for Public)' : 'Hide from Public'}"
+              class="${isHidden ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-gray-900/90 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40'} w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-[10px] sm:text-xs shadow-lg cursor-pointer transition">
+              <i class="fa-solid ${isHidden ? 'fa-eye-slash' : 'fa-eye'}"></i>
+            </button>
+          `;
+
+          const targetEditSnippet = `onclick="quickEditFromCard('${escapeHtml(movie.id)}')"`;
+          const btnStartIdx = cardHtml.indexOf(targetEditSnippet);
+          if (btnStartIdx !== -1) {
+            const openTagIdx = cardHtml.lastIndexOf("<button", btnStartIdx);
+            if (openTagIdx !== -1) {
+              cardHtml = cardHtml.slice(0, openTagIdx) + eyeBtnHtml + cardHtml.slice(openTagIdx);
+            }
+          }
+
+          if (isHidden) {
+            const hiddenRibbon = `
+              <div class="absolute bottom-1.5 left-1.5 z-20 bg-amber-500 text-black text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded shadow uppercase tracking-wide flex items-center gap-1 pointer-events-none">
+                <i class="fa-solid fa-eye-slash"></i> HIDDEN
+              </div>
+            `;
+            cardHtml = cardHtml.replace('class="card-hover relative group theme-card', 'class="card-hover relative group theme-card border-amber-500/70 opacity-85');
+            cardHtml = cardHtml.replace('<div class="absolute bottom-1.5 right-1.5', hiddenRibbon + '<div class="absolute bottom-1.5 right-1.5');
+          }
+
+          return cardHtml;
+        };
+      }
+
+      // 2. Inject Dedicated "Hidden" Tab in Admin Panel + Eyeball Button in Admin List
+      function ensureHiddenAdminTab() {
+        const backupTabBtn = document.getElementById("tabBtn-backup");
+        if (backupTabBtn && !document.getElementById("tabBtn-hiddenitems")) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.id = "tabBtn-hiddenitems";
+          btn.setAttribute("onclick", "switchAdminTab('hiddenitems')");
+          btn.className = "admin-tab px-3 py-2 sm:px-3.5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border sm:border-0 sm:border-b-2 text-amber-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer whitespace-nowrap border-gray-800 sm:border-transparent text-gray-400";
+          btn.innerHTML = `<i class="fa-solid fa-eye-slash"></i> <span>Hidden (<span id="adminHiddenTabCount">0</span>)</span>`;
+          backupTabBtn.parentElement.insertBefore(btn, backupTabBtn);
+        }
+
+        const backupPanel = document.getElementById("tab-backup");
+        if (backupPanel && !document.getElementById("tab-hiddenitems")) {
+          const panel = document.createElement("div");
+          panel.id = "tab-hiddenitems";
+          panel.className = "admin-panel space-y-5 hidden";
+          panel.innerHTML = `
+            <div class="bg-[#1a1a24] p-4 sm:p-5 rounded-xl border border-amber-500/30 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 pb-3">
+                <div>
+                  <h3 class="font-bold text-base text-amber-400 flex items-center gap-2">
+                    <i class="fa-solid fa-eye-slash"></i>
+                    <span>Hidden / Draft Content (<span id="adminHiddenPanelCount">0</span>)</span>
+                  </h3>
+                  <p class="text-xs text-gray-400 mt-1">Yeh saare contents abhi public viewers se chhupe hue hain. Live karne ke liye <b>Unhide</b> par click karein.</p>
+                </div>
+              </div>
+              <div id="adminHiddenItemsList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+            </div>
+          `;
+          backupPanel.parentElement.appendChild(panel);
+        }
+      }
+
+      function renderAdminHiddenTabContent() {
+        ensureHiddenAdminTab();
+        const hiddenMovies = (appData.movies || []).filter(m => Boolean(m.hidden));
+        const tabCountEl = document.getElementById("adminHiddenTabCount");
+        const panelCountEl = document.getElementById("adminHiddenPanelCount");
+        if (tabCountEl) tabCountEl.textContent = hiddenMovies.length;
+        if (panelCountEl) panelCountEl.textContent = hiddenMovies.length;
+
+        const container = document.getElementById("adminHiddenItemsList");
+        if (!container) return;
+
+        if (hiddenMovies.length === 0) {
+          container.innerHTML = `<p class="text-xs text-gray-500 italic">Abhi koi bhi content hide nahi kiya gaya hai.</p>`;
+          return;
+        }
+
+        container.innerHTML = hiddenMovies.map(m => {
+          const catsStr = (m.categories || []).join(", ");
+          const typesStr = (m.types || []).join(", ");
+          return `
+            <div class="flex items-center justify-between bg-[#101017] p-3 rounded-xl border border-amber-500/40 gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <img src="${escapeHtml(m.poster || m.backdrop)}" onerror="this.src='https://via.placeholder.com/80x110/14141c/ffffff?text=Img'"
+                  class="w-11 h-14 object-cover rounded bg-gray-800 flex-shrink-0" />
+                <div class="min-w-0">
+                  <h4 class="font-bold text-xs sm:text-sm text-white line-clamp-1">${escapeHtml(m.title || "Untitled")}</h4>
+                  <p class="text-[11px] text-gray-400 truncate mt-0.5">${[catsStr, typesStr, m.year].filter(Boolean).join(" • ")}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                <button type="button" onclick="quickToggleHideFromCard('${escapeHtml(m.id)}')" title="Unhide / Make Live"
+                  class="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 h-8 rounded-lg flex items-center justify-center gap-1 text-xs font-bold cursor-pointer transition">
+                  <i class="fa-solid fa-eye"></i> <span>Unhide</span>
+                </button>
+                <button type="button" onclick="editMovie('${escapeHtml(m.id)}')" title="Edit"
+                  class="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button type="button" onclick="deleteMovie('${escapeHtml(m.id)}')" title="Delete"
+                  class="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      if (typeof renderAdminMovies === "function") {
+        const origRenderAdminMovies = renderAdminMovies;
+        renderAdminMovies = function () {
+          origRenderAdminMovies.apply(this, arguments);
+          renderAdminHiddenTabContent();
+
+          const list = document.getElementById("adminMovieList");
+          if (!list) return;
+
+          Array.from(list.children).forEach(card => {
+            const editBtn = card.querySelector('[data-action="edit"]');
+            if (!editBtn) return;
+            const id = editBtn.getAttribute("data-id");
+            const movie = (appData.movies || []).find(m => m.id === id);
+            if (!movie) return;
+
+            const isHidden = Boolean(movie.hidden);
+            if (isHidden) {
+              card.style.borderColor = "#f59e0b";
+              card.style.opacity = "0.85";
+              const titleEl = card.querySelector("h4");
+              if (titleEl && !titleEl.querySelector(".hidden-pill-badge")) {
+                titleEl.insertAdjacentHTML("beforeend", ' <span class="hidden-pill-badge bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase ml-1">Hidden</span>');
+              }
+            }
+
+            if (!card.querySelector('[data-action="toggle-hide"]')) {
+              const btn = document.createElement("button");
+              btn.type = "button";
+              btn.setAttribute("data-action", "toggle-hide");
+              btn.setAttribute("data-id", id);
+              btn.title = isHidden ? "Unhide (Make Live)" : "Hide from Public";
+              btn.className = isHidden
+                ? "bg-amber-500 text-black hover:bg-amber-400 w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer font-bold"
+                : "bg-gray-800 text-gray-300 hover:bg-amber-500/20 hover:text-amber-300 w-8 h-8 rounded-lg flex items-center justify-center text-xs cursor-pointer";
+              btn.innerHTML = `<i class="fa-solid ${isHidden ? "fa-eye-slash" : "fa-eye"} pointer-events-none"></i>`;
+              btn.onclick = function (e) {
+                e.stopPropagation();
+                window.quickToggleHideFromCard(id);
+              };
+              editBtn.parentElement.insertBefore(btn, editBtn);
+            }
+          });
+        };
+      }
+    })();
     // Initialize
     initColorTheme();
     refreshAllUI();
