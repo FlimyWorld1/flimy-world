@@ -11034,6 +11034,504 @@ https://example.com/480p`;
         };
       }
     })();
+    // ================= IMP & INFO TOPBAR DRAWERS (GROUPS, MULTI-LINKS & INFO-ONLY TAGS) =================
+    (function () {
+      function ensureImpInfoData() {
+        if (!window.appData) return;
+        if (!Array.isArray(appData.impNotes)) {
+          appData.impNotes = [];
+        }
+        if (!Array.isArray(appData.infoNotes)) {
+          appData.infoNotes = [];
+        }
+      }
+
+      if (typeof normalizeAppData === "function") {
+        const origNormalize = normalizeAppData;
+        normalizeAppData = function () {
+          const res = origNormalize.apply(this, arguments);
+          ensureImpInfoData();
+          return res;
+        };
+      }
+
+      let activeMode = null; // "imp" | "info"
+      let editingEntryId = null;
+      let draftLinks = [];
+      let draftInfoTags = [];
+      let selectedFilterGroup = "ALL";
+      let selectedInfoTagFilter = "ALL";
+
+      function getCurrentList() {
+        ensureImpInfoData();
+        return activeMode === "info" ? appData.infoNotes : appData.impNotes;
+      }
+
+      function getAllGroupsForMode() {
+        const list = getCurrentList();
+        const defaults = activeMode === "info"
+          ? ["Daily Update", "Upcoming Movie", "News & Article", "Photos"]
+          : ["General IMP", "Links & Backup", "Site Alerts"];
+        const set = new Set([...defaults, ...list.map(item => (item.group || "").trim()).filter(Boolean)]);
+        return Array.from(set);
+      }
+
+      function getAllTagsForInfo() {
+        ensureImpInfoData();
+        const set = new Set();
+        appData.infoNotes.forEach(item => {
+          (item.tags || []).forEach(t => {
+            if (t && t.trim()) set.add(t.trim());
+          });
+        });
+        return Array.from(set);
+      }
+
+      function createStylesAndModals() {
+        if (!document.getElementById("impInfoModalStyle")) {
+          const style = document.createElement("style");
+          style.id = "impInfoModalStyle";
+          style.textContent = `
+            .hub-pill-btn {
+              font-size: 10px;
+              font-weight: 800;
+              letter-spacing: 0.04em;
+              padding: 3px 7px;
+              border-radius: 6px;
+              line-height: 1.1;
+              cursor: pointer;
+              transition: all 0.15s ease;
+              white-space: nowrap;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+
+        const titleSpan = document.getElementById("navSiteTitle");
+        if (titleSpan && !document.getElementById("topBarImpBtn")) {
+          const wrap = document.createElement("div");
+          wrap.className = "flex items-center gap-1 flex-shrink-0 ml-0.5";
+          wrap.innerHTML = `
+            <button type="button" id="topBarImpBtn" onclick="openImpInfoDrawer('imp')" title="Important Notes & Links"
+              class="hub-pill-btn bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/50">
+              IMP
+            </button>
+            <button type="button" id="topBarInfoBtn" onclick="openImpInfoDrawer('info')" title="Daily Info, Updates & Tags"
+              class="hub-pill-btn bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-black border border-sky-500/50">
+              INFO
+            </button>
+          `;
+          titleSpan.parentElement.insertAdjacentElement("afterend", wrap);
+        }
+
+        if (!document.getElementById("impInfoDrawerModal")) {
+          const modal = document.createElement("div");
+          modal.id = "impInfoDrawerModal";
+          modal.className = "fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto";
+          modal.innerHTML = `
+            <div class="theme-surface border rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl my-auto">
+              <div class="flex items-center justify-between px-4 sm:px-5 py-3.5 border-b border-gray-800 bg-[#101017]">
+                <div class="flex items-center gap-2.5">
+                  <span id="drawerBadgeIcon" class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-extrabold"></span>
+                  <div>
+                    <h3 id="drawerHeadingTitle" class="font-extrabold text-sm sm:text-base"></h3>
+                    <p id="drawerHeadingSub" class="text-[11px] text-gray-400"></p>
+                  </div>
+                </div>
+                <button type="button" onclick="closeImpInfoDrawer()" class="text-gray-400 hover:text-white text-lg px-2 py-1 cursor-pointer">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+
+              <div class="p-4 sm:p-5 overflow-y-auto space-y-5 flex-1">
+                <!-- Form Card -->
+                <div class="bg-[#161620] border border-gray-800 rounded-xl p-3.5 sm:p-4 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span id="drawerFormModeLabel" class="text-xs font-bold uppercase tracking-wider text-gray-300">Add New Entry</span>
+                    <button type="button" id="drawerCancelEditBtn" onclick="resetDrawerForm()" class="hidden text-[11px] text-amber-400 hover:underline cursor-pointer">
+                      Cancel Edit
+                    </button>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-[11px] text-gray-400 mb-1">Group Name</label>
+                      <div class="flex gap-1.5">
+                        <select id="drawerGroupSelect" class="theme-input border rounded-lg px-2.5 py-2 text-xs flex-1 outline-none"></select>
+                        <input type="text" id="drawerCustomGroupInput" placeholder="Ya naya group..." class="theme-input border rounded-lg px-2.5 py-2 text-xs w-32 sm:w-36 outline-none">
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-[11px] text-gray-400 mb-1">Heading / Short Title</label>
+                      <input type="text" id="drawerEntryTitle" placeholder="Jaise: Kal 1080p link update karna hai..." class="theme-input border rounded-lg px-3 py-2 text-xs w-full outline-none">
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">Description / Details</label>
+                    <textarea id="drawerEntryDesc" rows="3" placeholder="Yahan apni description ya daily update likhein..." class="theme-input border rounded-lg px-3 py-2 text-xs w-full outline-none"></textarea>
+                  </div>
+
+                  <!-- Multiple Links Builder -->
+                  <div class="space-y-2 pt-1">
+                    <div class="flex items-center justify-between">
+                      <label class="text-[11px] font-semibold text-gray-300">Links (Photo, News, Article, Website — Kitne bhi add karein)</label>
+                      <button type="button" onclick="addDrawerLinkRow()" class="text-[11px] bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 px-2.5 py-1 rounded-lg font-semibold cursor-pointer transition">
+                        + Add Link
+                      </button>
+                    </div>
+                    <div id="drawerLinksContainer" class="space-y-2"></div>
+                  </div>
+
+                  <!-- Tags Section (ONLY visible inside INFO mode) -->
+                  <div id="drawerInfoTagsBox" class="hidden space-y-2 pt-2 border-t border-gray-800">
+                    <label class="block text-[11px] font-semibold text-sky-300">Tags (Sirf INFO ke liye — Kitne bhi add karein)</label>
+                    <div class="flex gap-2">
+                      <input type="text" id="drawerNewTagInput" onkeydown="if(event.key==='Enter'){event.preventDefault();addDrawerInfoTag();}" placeholder="Tag likh kar Add dabayein (e.g. Trending, Oct 2026)..." class="theme-input border rounded-lg px-3 py-1.5 text-xs flex-1 outline-none">
+                      <button type="button" onclick="addDrawerInfoTag()" class="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer">
+                        Add Tag
+                      </button>
+                    </div>
+                    <div id="drawerDraftTagsList" class="flex flex-wrap gap-1.5 min-h-[24px]"></div>
+                  </div>
+
+                  <div class="pt-1 flex justify-end">
+                    <button type="button" id="drawerSaveBtn" onclick="saveDrawerEntry()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition">
+                      Save Entry
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Filters & Saved Entries -->
+                <div class="space-y-3">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs font-bold text-gray-300">Saved Items (<span id="drawerEntriesCount">0</span>)</span>
+                      <select id="drawerGroupFilter" onchange="selectedFilterGroup = this.value; renderDrawerEntries();" class="theme-input border rounded-lg px-2.5 py-1 text-xs outline-none"></select>
+                    </div>
+                    <select id="drawerTagFilter" onchange="selectedInfoTagFilter = this.value; renderDrawerEntries();" class="hidden theme-input border rounded-lg px-2.5 py-1 text-xs outline-none"></select>
+                  </div>
+                  <div id="drawerEntriesList" class="space-y-2.5"></div>
+                </div>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        }
+      }
+
+      function populateGroupSelect() {
+        const sel = document.getElementById("drawerGroupSelect");
+        const filterSel = document.getElementById("drawerGroupFilter");
+        if (!sel || !filterSel) return;
+
+        const groups = getAllGroupsForMode();
+        const prevVal = sel.value || groups[0] || "General";
+        sel.innerHTML = groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
+        if (groups.includes(prevVal)) sel.value = prevVal;
+
+        const prevFilter = selectedFilterGroup;
+        filterSel.innerHTML = `<option value="ALL">All Groups</option>` + groups.map(g => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
+        filterSel.value = (prevFilter === "ALL" || groups.includes(prevFilter)) ? prevFilter : "ALL";
+
+        const tagFilterSel = document.getElementById("drawerTagFilter");
+        if (tagFilterSel) {
+          if (activeMode === "info") {
+            const tags = getAllTagsForInfo();
+            tagFilterSel.classList.remove("hidden");
+            tagFilterSel.innerHTML = `<option value="ALL">All Tags</option>` + tags.map(t => `<option value="${escapeHtml(t)}">#${escapeHtml(t)}</option>`).join("");
+            tagFilterSel.value = (selectedInfoTagFilter === "ALL" || tags.includes(selectedInfoTagFilter)) ? selectedInfoTagFilter : "ALL";
+          } else {
+            tagFilterSel.classList.add("hidden");
+            selectedInfoTagFilter = "ALL";
+          }
+        }
+      }
+
+      function renderDrawerLinksBuilder() {
+        const box = document.getElementById("drawerLinksContainer");
+        if (!box) return;
+        if (draftLinks.length === 0) {
+          box.innerHTML = `<p class="text-[11px] text-gray-500 italic">Koi link add nahi hai. "+ Add Link" par click karke link jodein.</p>`;
+          return;
+        }
+        box.innerHTML = draftLinks.map((lnk, i) => `
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-[#101017] p-2 rounded-lg border border-gray-800">
+            <input type="text" value="${escapeHtml(lnk.label || "")}" oninput="draftLinks[${i}].label = this.value"
+              placeholder="Label (e.g. News Link / Photo / Article)" class="sm:col-span-4 theme-input border rounded px-2.5 py-1.5 text-xs outline-none">
+            <input type="url" value="${escapeHtml(lnk.url || "")}" oninput="draftLinks[${i}].url = this.value"
+              placeholder="https://..." class="sm:col-span-7 theme-input border rounded px-2.5 py-1.5 text-xs outline-none">
+            <button type="button" onclick="removeDrawerLinkRow(${i})" title="Remove Link"
+              class="sm:col-span-1 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white h-8 rounded flex items-center justify-center text-xs cursor-pointer">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `).join("");
+      }
+
+      window.addDrawerLinkRow = function (label = "", url = "") {
+        draftLinks.push({ label, url });
+        renderDrawerLinksBuilder();
+      };
+
+      window.removeDrawerLinkRow = function (idx) {
+        draftLinks.splice(idx, 1);
+        renderDrawerLinksBuilder();
+      };
+
+      function renderDraftInfoTags() {
+        if (activeMode !== "info") return;
+        const box = document.getElementById("drawerDraftTagsList");
+        if (!box) return;
+        if (draftInfoTags.length === 0) {
+          box.innerHTML = `<span class="text-[11px] text-gray-500">Koi tag select nahi hai.</span>`;
+          return;
+        }
+        box.innerHTML = draftInfoTags.map((tag, i) => `
+          <span class="inline-flex items-center gap-1 bg-sky-500/20 text-sky-300 border border-sky-500/40 text-[11px] font-semibold px-2 py-0.5 rounded-full">
+            <span>#${escapeHtml(tag)}</span>
+            <button type="button" onclick="removeDraftInfoTag(${i})" class="hover:text-white cursor-pointer">&times;</button>
+          </span>
+        `).join("");
+      }
+
+      window.addDrawerInfoTag = function () {
+        if (activeMode !== "info") return;
+        const inp = document.getElementById("drawerNewTagInput");
+        if (!inp) return;
+        const raw = inp.value.trim();
+        if (!raw) return;
+        raw.split(",").map(s => s.trim()).filter(Boolean).forEach(t => {
+          if (!draftInfoTags.includes(t)) draftInfoTags.push(t);
+        });
+        inp.value = "";
+        renderDraftInfoTags();
+      };
+
+      window.removeDraftInfoTag = function (idx) {
+        draftInfoTags.splice(idx, 1);
+        renderDraftInfoTags();
+      };
+
+      window.resetDrawerForm = function () {
+        editingEntryId = null;
+        draftLinks = [];
+        draftInfoTags = [];
+        const tInp = document.getElementById("drawerEntryTitle");
+        const dInp = document.getElementById("drawerEntryDesc");
+        const gInp = document.getElementById("drawerCustomGroupInput");
+        const tagInp = document.getElementById("drawerNewTagInput");
+        const modeLbl = document.getElementById("drawerFormModeLabel");
+        const cancelBtn = document.getElementById("drawerCancelEditBtn");
+        const saveBtn = document.getElementById("drawerSaveBtn");
+
+        if (tInp) tInp.value = "";
+        if (dInp) dInp.value = "";
+        if (gInp) gInp.value = "";
+        if (tagInp) tagInp.value = "";
+        if (modeLbl) modeLbl.textContent = activeMode === "info" ? "Add New INFO Update" : "Add New IMP Note";
+        if (cancelBtn) cancelBtn.classList.add("hidden");
+        if (saveBtn) saveBtn.textContent = activeMode === "info" ? "Save INFO" : "Save IMP";
+
+        populateGroupSelect();
+        renderDrawerLinksBuilder();
+        renderDraftInfoTags();
+      };
+
+      window.saveDrawerEntry = function () {
+        if (!activeMode) return;
+        const list = getCurrentList();
+        const customGrp = (document.getElementById("drawerCustomGroupInput")?.value || "").trim();
+        const selGrp = (document.getElementById("drawerGroupSelect")?.value || "").trim();
+        const group = customGrp || selGrp || (activeMode === "info" ? "Daily Update" : "General IMP");
+        const title = (document.getElementById("drawerEntryTitle")?.value || "").trim();
+        const description = (document.getElementById("drawerEntryDesc")?.value || "").trim();
+        const cleanLinks = draftLinks
+          .map(l => ({ label: (l.label || "").trim(), url: (l.url || "").trim() }))
+          .filter(l => l.url);
+
+        if (!title && !description && cleanLinks.length === 0) {
+          alert("Kam se kam title, description ya koi ek link enter karein.");
+          return;
+        }
+
+        const entryData = {
+          id: editingEntryId || ("note_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6)),
+          group,
+          title,
+          description,
+          links: cleanLinks,
+          updatedAt: new Date().toISOString()
+        };
+
+        if (activeMode === "info") {
+          entryData.tags = [...draftInfoTags];
+        }
+
+        if (editingEntryId) {
+          const idx = list.findIndex(x => x.id === editingEntryId);
+          if (idx !== -1) {
+            list[idx] = { ...list[idx], ...entryData };
+          } else {
+            list.unshift(entryData);
+          }
+        } else {
+          list.unshift(entryData);
+        }
+
+        saveDataToStorage();
+        resetDrawerForm();
+        renderDrawerEntries();
+      };
+
+      window.editDrawerEntry = function (id) {
+        const list = getCurrentList();
+        const item = list.find(x => x.id === id);
+        if (!item) return;
+
+        editingEntryId = item.id;
+        populateGroupSelect();
+        const selGrp = document.getElementById("drawerGroupSelect");
+        const customGrp = document.getElementById("drawerCustomGroupInput");
+        if (selGrp) selGrp.value = item.group || "";
+        if (customGrp) customGrp.value = "";
+        document.getElementById("drawerEntryTitle").value = item.title || "";
+        document.getElementById("drawerEntryDesc").value = item.description || "";
+        draftLinks = Array.isArray(item.links) ? item.links.map(l => ({ ...l })) : [];
+        draftInfoTags = activeMode === "info" && Array.isArray(item.tags) ? [...item.tags] : [];
+
+        document.getElementById("drawerFormModeLabel").textContent = "Edit Entry";
+        document.getElementById("drawerCancelEditBtn").classList.remove("hidden");
+        document.getElementById("drawerSaveBtn").textContent = "Update Entry";
+
+        renderDrawerLinksBuilder();
+        renderDraftInfoTags();
+      };
+
+      window.deleteDrawerEntry = function (id) {
+        if (!confirm("Is entry ko delete karein?")) return;
+        ensureImpInfoData();
+        if (activeMode === "info") {
+          appData.infoNotes = appData.infoNotes.filter(x => x.id !== id);
+        } else {
+          appData.impNotes = appData.impNotes.filter(x => x.id !== id);
+        }
+        if (editingEntryId === id) resetDrawerForm();
+        saveDataToStorage();
+        renderDrawerEntries();
+      };
+
+      window.renderDrawerEntries = function () {
+        if (!activeMode) return;
+        populateGroupSelect();
+        const list = getCurrentList();
+        const filtered = list.filter(item => {
+          const grpMatch = selectedFilterGroup === "ALL" || (item.group || "") === selectedFilterGroup;
+          const tagMatch = activeMode !== "info" || selectedInfoTagFilter === "ALL" || (Array.isArray(item.tags) && item.tags.includes(selectedInfoTagFilter));
+          return grpMatch && tagMatch;
+        });
+
+        const countEl = document.getElementById("drawerEntriesCount");
+        if (countEl) countEl.textContent = filtered.length;
+
+        const container = document.getElementById("drawerEntriesList");
+        if (!container) return;
+
+        if (filtered.length === 0) {
+          container.innerHTML = `<p class="text-xs text-gray-500 italic py-3">Is filter mein koi entry nahi mili.</p>`;
+          return;
+        }
+
+        container.innerHTML = filtered.map(item => {
+          const linksHtml = (item.links && item.links.length > 0)
+            ? `<div class="flex flex-wrap gap-1.5 mt-2.5">` + item.links.map((lnk, idx) => {
+                const safeUrl = escapeHtml(lnk.url);
+                const lbl = escapeHtml(lnk.label || ("Link " + (idx + 1)));
+                return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[11px] bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 px-2.5 py-1 rounded-lg transition"><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i><span>${lbl}</span></a>`;
+              }).join("") + `</div>`
+            : "";
+
+          const tagsHtml = (activeMode === "info" && Array.isArray(item.tags) && item.tags.length > 0)
+            ? `<div class="flex flex-wrap gap-1 mt-2">` + item.tags.map(t => `<span class="text-[10px] bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">#${escapeHtml(t)}</span>`).join("") + `</div>`
+            : "";
+
+          return `
+            <div class="bg-[#161620] border border-gray-800 rounded-xl p-3.5">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <span class="inline-block text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-gray-800 text-amber-300 mb-1">${escapeHtml(item.group || "General")}</span>
+                  ${item.title ? `<h4 class="font-bold text-xs sm:text-sm text-white">${escapeHtml(item.title)}</h4>` : ""}
+                </div>
+                <div class="flex items-center gap-1 flex-shrink-0">
+                  <button type="button" onclick="editDrawerEntry('${escapeHtml(item.id)}')" title="Edit" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs cursor-pointer">
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button type="button" onclick="deleteDrawerEntry('${escapeHtml(item.id)}')" title="Delete" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs cursor-pointer">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+              ${item.description ? `<p class="text-xs text-gray-300 mt-1.5 whitespace-pre-line">${escapeHtml(item.description)}</p>` : ""}
+              ${linksHtml}
+              ${tagsHtml}
+            </div>
+          `;
+        }).join("");
+      };
+
+      window.openImpInfoDrawer = function (mode) {
+        createStylesAndModals();
+        activeMode = mode === "info" ? "info" : "imp";
+        selectedFilterGroup = "ALL";
+        selectedInfoTagFilter = "ALL";
+
+        const badge = document.getElementById("drawerBadgeIcon");
+        const titleEl = document.getElementById("drawerHeadingTitle");
+        const subEl = document.getElementById("drawerHeadingSub");
+        const tagsBox = document.getElementById("drawerInfoTagsBox");
+
+        if (activeMode === "info") {
+          badge.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/40";
+          badge.textContent = "INFO";
+          titleEl.textContent = "INFO — Daily Updates, Links & Tags";
+          subEl.textContent = "Roz ke naye updates, movie dates, photo/news/article links aur tags manage karein.";
+          tagsBox.classList.remove("hidden");
+        } else {
+          badge.className = "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40";
+          badge.textContent = "IMP";
+          titleEl.textContent = "IMP — Important Notes & Link Groups";
+          subEl.textContent = "Zaroori notes, groups aur links yahan save karein.";
+          tagsBox.classList.add("hidden");
+        }
+
+        resetDrawerForm();
+        renderDrawerEntries();
+        document.getElementById("impInfoDrawerModal").classList.remove("hidden");
+      };
+
+      window.closeImpInfoDrawer = function () {
+        const modal = document.getElementById("impInfoDrawerModal");
+        if (modal) modal.classList.add("hidden");
+        activeMode = null;
+        editingEntryId = null;
+      };
+
+      if (typeof refreshAllUI === "function") {
+        const origRefresh = refreshAllUI;
+        refreshAllUI = function () {
+          ensureImpInfoData();
+          createStylesAndModals();
+          const res = origRefresh.apply(this, arguments);
+          if (activeMode && !document.getElementById("impInfoDrawerModal")?.classList.contains("hidden")) {
+            renderDrawerEntries();
+          }
+          return res;
+        };
+      }
+
+      ensureImpInfoData();
+      createStylesAndModals();
+    })();
     // Initialize
     initColorTheme();
     refreshAllUI();
