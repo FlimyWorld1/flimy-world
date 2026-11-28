@@ -15073,6 +15073,438 @@ https://hubcloud.mov/drive/jjhghjbtjnvwjpg" class="w-full bg-[#0e0e14] border bo
 
       injectSmartLinkUpdaterUI();
     })();
+    // ================= RSS AUTO-FETCHER (RUN NOW + AUTO-TMDB + LIVE SYNC) =================
+    (function () {
+      function esc(str) {
+        if (typeof escapeHtml === "function") return escapeHtml(str ?? "");
+        return String(str ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function ensureRssState() {
+        if (!window.appData) return;
+        if (!appData.rssConfig || typeof appData.rssConfig !== "object") {
+          appData.rssConfig = {
+            feeds: [],
+            tmdbApiKey: "",
+            autoHideNew: false,
+            lastRunAt: "",
+            processedIds: []
+          };
+        }
+        if (!Array.isArray(appData.rssConfig.feeds)) appData.rssConfig.feeds = [];
+        if (!Array.isArray(appData.rssConfig.processedIds)) appData.rssConfig.processedIds = [];
+      }
+
+      if (typeof normalizeAppData === "function") {
+        const origNorm = normalizeAppData;
+        normalizeAppData = function () {
+          const res = origNorm.apply(this, arguments);
+          ensureRssState();
+          return res;
+        };
+      }
+
+      function detectTmdbKeyFromPage() {
+        ensureRssState();
+        if (appData.rssConfig.tmdbApiKey) return appData.rssConfig.tmdbApiKey.trim();
+        if (appData.settings?.tmdbApiKey) return appData.settings.tmdbApiKey.trim();
+        const htmlText = document.documentElement.innerHTML;
+        const m = htmlText.match(/api_key=([a-f0-9]{32})/i);
+        return m ? m[1] : "";
+      }
+
+      function extractCleanMeta(rawTitle) {
+        let text = String(rawTitle || "")
+          .replace(/\.(mkv|mp4|avi|webm|torrent)$/i, "")
+          .trim();
+
+        const yearMatch = text.match(/\b(19\d{2}|20\d{2})\b/);
+        const year = yearMatch ? yearMatch[1] : "";
+
+        const sizeMatch = text.match(/\b(\d+(?:\.\d+)?\s*(?:GB|MB|TB))\b/i);
+        const size = sizeMatch ? sizeMatch[1].toUpperCase() : "";
+
+        let qualityKey = "others";
+        if (/(?:\b2160p\b|\b4k\b|\buhd\b)/i.test(text)) qualityKey = "2160p";
+        else if (/(?:\b1080p\b|\bfull\s*hd\b|\bfhd\b)/i.test(text)) qualityKey = "1080p";
+        else if (/(?:\b720p\b|\bhd\b|\bhdrip\b|\bhdtv\b)/i.test(text)) qualityKey = "720p";
+        else if (/(?:\b480p\b|\bsd\b)/i.test(text)) qualityKey = "480p";
+
+        const isSeries = /\b(S\d{1,2}E\d{1,2}|Season\s*\d+|Complete\s*Series|EP\s*\d+)\b/i.test(text);
+
+        let titlePart = text.replace(/[._]+/g, " ");
+        if (year) {
+          const idx = titlePart.indexOf(year);
+          if (idx > 0) titlePart = titlePart.slice(0, idx);
+        } else {
+          const cut = titlePart.match(/\b(2160p|4k|1080p|720p|480p|web-dl|webrip|bluray|hdrip|hevc|x264|x265|s\d+e\d+|season\s*\d+)\b/i);
+          if (cut && cut.index > 0) titlePart = titlePart.slice(0, cut.index);
+        }
+
+        const cleanTitle = titlePart
+          .replace(/[\[\]\(\)\{\}\-]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        return { cleanTitle, year, size, qualityKey, isSeries };
+      }
+
+      function normalizePureName(str) {
+        return String(str || "")
+          .replace(/\[[^\]]*\]|\([^\)]*\)/g, " ")
+          .replace(/\b(19\d{2}|20\d{2})\b/g, " ")
+          .toLowerCase()
+          .replace(/[^a-z0-9\s]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      async function fetchTmdbDetails(title, year, isSeries, apiKey) {
+        if (!apiKey || !title) return null;
+        const endpoint = isSeries ? "tv" : "movie";
+        try {
+          const q = encodeURIComponent(title);
+          const yParam = year ? (isSeries ? `&first_air_date_year=${year}` : `&year=${year}`) : "";
+          const res = await fetch(`https://api.themoviedb.org/3/search/${endpoint}?api_key=${apiKey}&query=${q}${yParam}`);
+          if (!res.ok) return null;
+          const data = await res.json();
+          const hit = (data.results || [])[0];
+          if (!hit) return null;
+
+          return {
+            title: hit.title || hit.name || title,
+            year: (hit.release_date || hit.first_air_date || year || "").slice(0, 4),
+            rating: hit.vote_average ? Number(hit.vote_average).toFixed(1) : "",
+            desc: hit.overview || "",
+            poster: hit.poster_path ? `https://image.tmdb.org/t/p/w500${hit.poster_path}` : "",
+            backdrop: hit.backdrop_path ? `https://image.tmdb.org/t/p/w780${hit.backdrop_path}` : ""
+          };
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function parseRssXmlItems(xmlString) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(xmlString, "text/xml");
+        const nodes = Array.from(doc.querySelectorAll("item, entry"));
+
+        return nodes.map(node => {
+          const rawTitle = (node.querySelector("title")?.textContent || "").trim();
+          const guid = (node.querySelector("guid, id")?.textContent || "").trim();
+          const descHtml = node.querySelector("description, summary, content")?.textContent || "";
+
+          // Extract link from <enclosure>, <link href="">, <link>, or magnet/http inside description
+          let linkUrl = node.querySelector("enclosure")?.getAttribute("url") || "";
+          if (!linkUrl) {
+            const linkEl = node.querySelector("link");
+            linkUrl = linkEl?.getAttribute("href") || (linkEl?.textContent || "").trim();
+          }
+          if (!linkUrl || !/^(https?:|magnet:)/i.test(linkUrl)) {
+            const magnetMatch = descHtml.match(/magnet:\?xt=urn:[a-z0-9]+:[a-z0-9]+[^\s"'<>]*/i);
+            const httpMatch = descHtml.match(/https?:\/\/[^\s"'<>]+/i);
+            linkUrl = magnetMatch ? magnetMatch[0] : (httpMatch ? httpMatch[0] : "");
+          }
+
+          // Extract size from enclosure length or description text
+          let descSize = "";
+          const encLen = Number(node.querySelector("enclosure")?.getAttribute("length") || 0);
+          if (encLen > 0) {
+            const gb = encLen / (1024 * 1024 * 1024);
+            descSize = gb >= 1 ? `${gb.toFixed(2)} GB` : `${(encLen / (1024 * 1024)).toFixed(0)} MB`;
+          } else {
+            const sm = descHtml.match(/\b(\d+(?:\.\d+)?\s*(?:GB|MB|TB))\b/i);
+            if (sm) descSize = sm[1].toUpperCase();
+          }
+
+          const uniqueKey = guid || linkUrl || rawTitle;
+          return { uniqueKey, rawTitle, linkUrl, descSize };
+        }).filter(it => it.rawTitle && it.linkUrl);
+      }
+
+      function injectRssAdminTab() {
+        ensureRssState();
+        const backupBtn = document.getElementById("tabBtn-backup");
+        if (backupBtn && !document.getElementById("tabBtn-rsssync")) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.id = "tabBtn-rsssync";
+          btn.setAttribute("onclick", "switchAdminTab('rsssync')");
+          btn.className = "admin-tab px-3 py-2 sm:px-3.5 sm:py-3.5 text-xs sm:text-sm font-semibold rounded-lg sm:rounded-none border sm:border-0 sm:border-b-2 text-orange-400 hover:text-white flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer whitespace-nowrap border-gray-800 sm:border-transparent text-gray-400";
+          btn.innerHTML = `<i class="fa-solid fa-rss"></i> <span>RSS Auto-Sync</span>`;
+          backupBtn.parentElement.insertBefore(btn, backupBtn);
+        }
+
+        const backupPanel = document.getElementById("tab-backup");
+        if (backupPanel && !document.getElementById("tab-rsssync")) {
+          const panel = document.createElement("div");
+          panel.id = "tab-rsssync";
+          panel.className = "admin-panel space-y-5 hidden";
+          panel.innerHTML = `
+            <div class="bg-[#1a1a24] p-4 sm:p-5 rounded-xl border border-orange-500/30 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 class="font-extrabold text-base text-orange-400 flex items-center gap-2">
+                    <i class="fa-solid fa-rss"></i>
+                    <span>RSS Auto-Fetcher &amp; Smart Uploader</span>
+                  </h3>
+                  <p class="text-xs text-gray-400 mt-0.5">
+                    "Run Now" par click karte hi pichhle sync ke baad aaya sirf naya content fetch hoga, TMDB se poster/details aayenge, aur links automatic add hongi.
+                  </p>
+                </div>
+
+                <button type="button" id="rssRunNowBtn" onclick="runRssAutoSyncNow()"
+                  class="bg-orange-600 hover:bg-orange-500 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-2 cursor-pointer shadow-lg transition">
+                  <i class="fa-solid fa-rotate"></i>
+                  <span>Run Now (Fetch New)</span>
+                </button>
+              </div>
+
+              <!-- Add Feed Form -->
+              <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 bg-[#101017] p-3.5 rounded-xl border border-gray-800">
+                <input type="url" id="newRssFeedUrl" placeholder="RSS Feed URL (https://...)" class="sm:col-span-6 bg-[#181822] border border-gray-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-orange-500">
+                <input type="text" id="newRssFeedCat" placeholder="Default Category (e.g. Hollywood)" class="sm:col-span-4 bg-[#181822] border border-gray-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-orange-500">
+                <button type="button" onclick="addRssFeedItem()" class="sm:col-span-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-3 rounded-lg text-xs cursor-pointer">
+                  + Add Feed
+                </button>
+              </div>
+
+              <!-- Saved Feeds List -->
+              <div id="rssSavedFeedsList" class="space-y-2"></div>
+
+              <!-- TMDB & Mode Options -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-800">
+                <div>
+                  <label class="block text-[11px] text-gray-400 mb-1">TMDB API Key (Auto-Poster &amp; Rating ke liye)</label>
+                  <div class="flex gap-1.5">
+                    <input type="text" id="rssTmdbKeyInput" placeholder="TMDB v3 API Key..." class="flex-1 bg-[#101017] border border-gray-700 rounded-lg px-3 py-1.5 text-xs outline-none">
+                    <button type="button" onclick="saveRssSettings()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs cursor-pointer">Save</button>
+                  </div>
+                </div>
+
+                <div class="flex flex-col justify-center space-y-1.5">
+                  <label class="inline-flex items-center gap-2 text-xs text-gray-300 cursor-pointer">
+                    <input type="checkbox" id="rssAutoHideCheck" onchange="saveRssSettings()" class="accent-orange-500 w-4 h-4">
+                    <span>Naye auto-fetched items ko pehle <b>Hidden (Draft)</b> rakhein</span>
+                  </label>
+                  <div class="text-[11px] text-gray-400">
+                    Last Sync: <span id="rssLastRunLabel" class="text-gray-200 font-semibold">Never</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Live Status Log -->
+              <div id="rssSyncStatusBox" class="bg-[#0e0e14] border border-gray-800 rounded-xl p-3 text-xs text-gray-400 font-mono max-h-44 overflow-y-auto">
+                Ready. RSS Feed add karke "Run Now" par click karein.
+              </div>
+            </div>
+          `;
+          backupPanel.parentElement.appendChild(panel);
+        }
+
+        renderRssAdminUI();
+      }
+
+      function renderRssAdminUI() {
+        ensureRssState();
+        const keyInput = document.getElementById("rssTmdbKeyInput");
+        const hideCheck = document.getElementById("rssAutoHideCheck");
+        const lastRunEl = document.getElementById("rssLastRunLabel");
+        const listEl = document.getElementById("rssSavedFeedsList");
+
+        if (keyInput && !keyInput.value) keyInput.value = detectTmdbKeyFromPage();
+        if (hideCheck) hideCheck.checked = Boolean(appData.rssConfig.autoHideNew);
+        if (lastRunEl) {
+          lastRunEl.textContent = appData.rssConfig.lastRunAt
+            ? new Date(appData.rssConfig.lastRunAt).toLocaleString()
+            : "Never";
+        }
+
+        if (!listEl) return;
+        if (appData.rssConfig.feeds.length === 0) {
+          listEl.innerHTML = `<p class="text-xs text-gray-500 italic">Abhi koi RSS feed add nahi ki gayi hai.</p>`;
+          return;
+        }
+
+        listEl.innerHTML = appData.rssConfig.feeds.map((f, i) => `
+          <div class="flex items-center justify-between gap-2 bg-[#101017] px-3 py-2 rounded-lg border border-gray-800 text-xs">
+            <div class="min-w-0 flex-1">
+              <div class="font-mono text-gray-200 truncate">${esc(f.url)}</div>
+              <div class="text-[10px] text-orange-400">Category: ${esc(f.category || "Auto")}</div>
+            </div>
+            <button type="button" onclick="removeRssFeedItem(${i})" class="bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white px-2.5 py-1 rounded text-xs cursor-pointer">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `).join("");
+      }
+
+      window.addRssFeedItem = function () {
+        ensureRssState();
+        const urlInp = document.getElementById("newRssFeedUrl");
+        const catInp = document.getElementById("newRssFeedCat");
+        const url = (urlInp?.value || "").trim();
+        const category = (catInp?.value || "").trim() || "Hollywood";
+        if (!url || !/^https?:\/\//i.test(url)) {
+          alert("Valid http/https RSS URL enter karein.");
+          return;
+        }
+        if (!appData.rssConfig.feeds.some(f => f.url === url)) {
+          appData.rssConfig.feeds.push({ url, category });
+          saveDataToStorage();
+        }
+        urlInp.value = "";
+        renderRssAdminUI();
+      };
+
+      window.removeRssFeedItem = function (idx) {
+        ensureRssState();
+        appData.rssConfig.feeds.splice(idx, 1);
+        saveDataToStorage();
+        renderRssAdminUI();
+      };
+
+      window.saveRssSettings = function () {
+        ensureRssState();
+        const keyVal = (document.getElementById("rssTmdbKeyInput")?.value || "").trim();
+        const hideVal = Boolean(document.getElementById("rssAutoHideCheck")?.checked);
+        appData.rssConfig.tmdbApiKey = keyVal;
+        appData.rssConfig.autoHideNew = hideVal;
+        saveDataToStorage();
+        renderRssAdminUI();
+      };
+
+      window.runRssAutoSyncNow = async function () {
+        ensureRssState();
+        if (appData.rssConfig.feeds.length === 0) {
+          alert("Pehle kam se kam ek RSS Feed URL add karein.");
+          return;
+        }
+
+        const btn = document.getElementById("rssRunNowBtn");
+        const logBox = document.getElementById("rssSyncStatusBox");
+        const log = (msg) => {
+          if (logBox) {
+            logBox.innerHTML += `<div>• ${esc(msg)}</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
+          }
+        };
+
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Fetching...</span>`;
+        }
+        if (logBox) logBox.innerHTML = `<div>Sync started...</div>`;
+
+        const processedSet = new Set(appData.rssConfig.processedIds || []);
+        const tmdbKey = detectTmdbKeyFromPage();
+        let newMoviesAdded = 0;
+        let existingUpdated = 0;
+
+        for (const feed of appData.rssConfig.feeds) {
+          try {
+            log(`Fetching: ${feed.url}`);
+            const apiRes = await fetch(`/api/fetch-rss?url=${encodeURIComponent(feed.url)}`);
+            const payload = await apiRes.json();
+
+            if (!apiRes.ok || !payload.xml) {
+              log(`Error (${feed.url}): ${payload.error || "Unable to read RSS"}`);
+              continue;
+            }
+
+            const items = parseRssXmlItems(payload.xml);
+            const freshItems = items.filter(it => !processedSet.has(it.uniqueKey));
+            log(`Total items: ${items.length} | New since last run: ${freshItems.length}`);
+
+            // Process oldest-to-newest so newest appears at top
+            for (const item of freshItems.reverse()) {
+              const meta = extractCleanMeta(item.rawTitle);
+              const finalSize = meta.size || item.descSize || "";
+              const isMagnet = /^magnet:/i.test(item.linkUrl);
+              const linkLabel = isMagnet ? "Magnet / Torrent" : "Download Link";
+
+              const normTitle = normalizePureName(meta.cleanTitle);
+              const existingMovie = (appData.movies || []).find(m => {
+                const mNorm = normalizePureName(m.title || "");
+                const sameName = mNorm && normTitle && mNorm === normTitle;
+                const sameYear = !meta.year || !m.year || String(m.year) === String(meta.year);
+                return sameName && sameYear;
+              });
+
+              const newGroupObj = {
+                name: item.rawTitle,
+                size: finalSize,
+                qualityFolder: meta.qualityKey,
+                links: [{ label: linkLabel, url: item.linkUrl }]
+              };
+
+              if (existingMovie) {
+                if (!Array.isArray(existingMovie.downloadGroups)) existingMovie.downloadGroups = [];
+                existingMovie.downloadGroups.push(newGroupObj);
+                existingUpdated++;
+                log(`Attached to existing: ${existingMovie.title} (${meta.qualityKey})`);
+              } else {
+                const tmdb = await fetchTmdbDetails(meta.cleanTitle, meta.year, meta.isSeries, tmdbKey);
+                const contentType = meta.isSeries ? "Web Series" : "Movie";
+                const catName = feed.category || "Hollywood";
+
+                const createdObj = {
+                  id: "m" + Date.now() + "_" + Math.random().toString(36).slice(2, 5),
+                  title: tmdb?.title || meta.cleanTitle || item.rawTitle,
+                  category: catName,
+                  categories: [catName],
+                  type: contentType,
+                  types: [contentType],
+                  customTags: [],
+                  poster: tmdb?.poster || "",
+                  backdrop: tmdb?.backdrop || tmdb?.poster || "",
+                  youtube: "",
+                  year: tmdb?.year || meta.year || String(new Date().getFullYear()),
+                  rating: tmdb?.rating || "",
+                  desc: tmdb?.desc || "",
+                  hidden: Boolean(appData.rssConfig.autoHideNew),
+                  downloadGroups: [newGroupObj]
+                };
+
+                appData.movies.unshift(createdObj);
+                newMoviesAdded++;
+                log(`Added new: ${createdObj.title} (${createdObj.year}) [${meta.qualityKey}]`);
+              }
+
+              processedSet.add(item.uniqueKey);
+            }
+          } catch (err) {
+            log(`Failed (${feed.url}): ${err.message}`);
+          }
+        }
+
+        // Keep last 2000 processed IDs to avoid duplicates without bloating DB
+        appData.rssConfig.processedIds = Array.from(processedSet).slice(-2000);
+        appData.rssConfig.lastRunAt = new Date().toISOString();
+        saveDataToStorage();
+        renderRssAdminUI();
+
+        log(`Completed! New Added: ${newMoviesAdded}, Updated Existing: ${existingUpdated}`);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-rotate"></i> <span>Run Now (Fetch New)</span>`;
+        }
+      };
+
+      if (typeof openAdminModal === "function") {
+        const origOpen = openAdminModal;
+        openAdminModal = function () {
+          injectRssAdminTab();
+          return origOpen.apply(this, arguments);
+        };
+      }
+
+      injectRssAdminTab();
+    })();
     // Initialize
     initColorTheme();
     refreshAllUI();
