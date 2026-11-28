@@ -11034,6 +11034,721 @@ https://example.com/480p`;
         };
       }
     })();
+    // ================= SMART BULK LINK UPDATER (TOP OF ADMIN PANEL) =================
+    (function () {
+      function esc(str) {
+        if (typeof escapeHtml === "function") return escapeHtml(str ?? "");
+        return String(str ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      let selectedTargetMovieId = null;
+      let parsedNewGroups = [];
+      let detectedTitleQuery = "";
+      let detectedYearQuery = "";
+
+      function injectSmartLinkUpdaterUI() {
+        const tabMovies = document.getElementById("tab-movies");
+        const movieForm = document.getElementById("movieForm");
+        if (!tabMovies || !movieForm || document.getElementById("smartBulkLinkUpdaterBox")) return;
+
+        const box = document.createElement("div");
+        box.id = "smartBulkLinkUpdaterBox";
+        box.className = "bg-gradient-to-br from-[#161b26] to-[#14141c] p-4 sm:p-5 rounded-xl border border-emerald-500/40 shadow-lg space-y-4";
+        box.innerHTML = `
+          <div class="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 class="font-extrabold text-sm sm:text-base text-emerald-400 flex items-center gap-2">
+                <i class="fa-solid fa-bolt"></i>
+                <span>Smart Bulk Link Updater (Auto-Detect &amp; Attach)</span>
+              </h3>
+              <p class="text-[11px] sm:text-xs text-gray-400 mt-0.5">
+                Upar Movie/Series ka naam (jaise <b>Iron Man 2008</b>) aur neeche nayi links paste karein. System pehle match detect karke preview dikhayega.
+              </p>
+            </div>
+            <button type="button" onclick="clearSmartLinkUpdater()" class="text-[11px] bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1 rounded-lg cursor-pointer">
+              Clear
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+            <!-- Left: Paste Text + Links -->
+            <div class="lg:col-span-7 space-y-2.5">
+              <textarea id="smartLinkRawTextarea" rows="6" placeholder="Example:
+Iron Man 2008
+
+1080p WEB-DL
+Size: 2.4 GB
+HubCloud
+https://example.com/ironman-1080p-1
+HubDrive
+https://example.com/ironman-1080p-2
+
+720p HEVC
+Size: 1.1 GB
+https://example.com/ironman-720p" class="w-full bg-[#0e0e14] border border-gray-700 focus:border-emerald-500 rounded-xl p-3 text-xs font-mono leading-relaxed outline-none"></textarea>
+
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="relative flex-1 min-w-[200px]">
+                  <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                  <input type="text" id="smartLinkManualSearch" oninput="renderSmartSearchDropdown()" onfocus="renderSmartSearchDropdown()" placeholder="Ya yahan uploaded content search karein..." class="w-full bg-[#0e0e14] border border-gray-700 focus:border-sky-500 rounded-lg pl-8 pr-3 py-1.5 text-xs outline-none">
+                  <div id="smartSearchResultsDropdown" class="hidden absolute left-0 right-0 top-full mt-1 z-30 bg-[#101017] border border-gray-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto divide-y divide-gray-800"></div>
+                </div>
+
+                <button type="button" onclick="runSmartLinkDetect()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 cursor-pointer transition shadow">
+                  <i class="fa-solid fa-magnifying-glass-chart"></i>
+                  <span>Detect &amp; Preview</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Right: Live Preview, Suggestions & Confirmation -->
+            <div id="smartLinkPreviewPanel" class="lg:col-span-5 bg-[#0e0e14] border border-gray-800 rounded-xl p-3.5 min-h-[175px] flex flex-col justify-between">
+              <div class="text-xs text-gray-500 italic my-auto text-center py-6">
+                Text aur links paste karke <b>"Detect &amp; Preview"</b> par click karein, ya search bar se movie select karein.
+              </div>
+            </div>
+          </div>
+        `;
+
+        tabMovies.insertBefore(box, movieForm);
+      }
+
+      function normalizeTitleText(str) {
+        return String(str || "")
+          .toLowerCase()
+          .replace(/\b(19\d{2}|20\d{2})\b/g, " ")
+          .replace(/\b(4k|2160p|1080p|720p|480p|web-dl|webrip|bluray|hdrip|hevc|x264|x265|av1|hdr|sdr|hindi|english|tamil|telugu|dual audio|multi|season|episode|ep|s\d+)\b/gi, " ")
+          .replace(/[^a-z0-9\s]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function parseTitleYearAndGroups(rawText) {
+        const lines = String(rawText || "")
+          .split(/\r?\n/)
+          .map(l => l.trim())
+          .filter(Boolean);
+
+        let titleLine = "";
+        let yearMatch = "";
+        const bodyLines = [];
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const isUrl = /^https?:\/\//i.test(line);
+          if (!titleLine && !isUrl) {
+            const cleanedHeader = line.replace(/^(movie\s*name|series\s*name|title|name)\s*:\s*/i, "").trim();
+            const ym = cleanedHeader.match(/\b(19\d{2}|20\d{2})\b/);
+            if (ym) yearMatch = ym[1];
+            titleLine = cleanedHeader;
+            continue;
+          }
+          bodyLines.push(line);
+        }
+
+        // Parse link groups from remaining lines
+        const groups = [];
+        let currentGroup = null;
+        let pendingLabel = "";
+
+        function ensureGroup(defaultName = "Download Links") {
+          if (!currentGroup) {
+            currentGroup = { name: defaultName, size: "", links: [] };
+            groups.push(currentGroup);
+          }
+          return currentGroup;
+        }
+
+        const qualityRegex = /\b(2160p|4k|1080p|720p|480p|360p|web-dl|webrip|bluray|hdrip|hevc|hdr|season\s*\d+|s\d+\s*e\d+|episode\s*\d+|complete)\b/i;
+
+        for (const line of bodyLines) {
+          if (/^https?:\/\//i.test(line)) {
+            const grp = ensureGroup();
+            const autoLabel = pendingLabel || inferServerNameFromUrl(line, grp.links.length + 1);
+            grp.links.push({ label: autoLabel, url: line });
+            pendingLabel = "";
+            continue;
+          }
+
+          const sizeMatch = line.match(/^(?:size\s*:\s*)?(\d+(?:\.\d+)?\s*(?:GB|MB|TB))$/i);
+          if (sizeMatch) {
+            const grp = ensureGroup();
+            grp.size = sizeMatch[1].toUpperCase();
+            continue;
+          }
+
+          const inlineSize = line.match(/\b(\d+(?:\.\d+)?\s*(?:GB|MB|TB))\b/i);
+          if (qualityRegex.test(line)) {
+            const cleanGrpName = line.replace(/^(quality|file|group)\s*:\s*/i, "").trim();
+            currentGroup = {
+              name: cleanGrpName,
+              size: inlineSize ? inlineSize[1].toUpperCase() : "",
+              links: []
+            };
+            groups.push(currentGroup);
+            pendingLabel = "";
+          } else {
+            pendingLabel = line.replace(/^(button\s*name|server|link\s*name|label)\s*:\s*/i, "").trim();
+          }
+        }
+
+        const validGroups = groups.filter(g => g.links.length > 0);
+        return { titleLine, yearMatch, validGroups };
+      }
+
+      function inferServerNameFromUrl(url, index) {
+        const u = url.toLowerCase();
+        if (u.includes("hubcloud")) return "Download HubCloud";
+        if (u.includes("hubdrive")) return "Download HubDrive";
+        if (u.includes("pixeldrain")) return "Pixeldrain";
+        if (u.includes("gdtot")) return "GDTOT";
+        if (u.includes("drive.google")) return "Google Drive";
+        if (u.includes("t.me") || u.includes("telegram")) return "Telegram";
+        return "Download Link " + index;
+      }
+
+      function scoreMovieMatches(titleQuery, yearQuery) {
+        const movies = Array.isArray(appData.movies) ? appData.movies : [];
+        const normQuery = normalizeTitleText(titleQuery);
+        const queryTokens = normQuery ? normQuery.split(" ") : [];
+
+        const scored = movies.map(m => {
+          const mTitle = String(m.title || "");
+          const normM = normalizeTitleText(mTitle);
+          const mYear = String(m.year || "").trim();
+          let score = 0;
+
+          if (normQuery && normM === normQuery) {
+            score += 100;
+          } else if (normQuery && (normM.includes(normQuery) || normQuery.includes(normM))) {
+            score += 70;
+          } else if (queryTokens.length > 0) {
+            const mTokens = new Set(normM.split(" "));
+            let hits = 0;
+            queryTokens.forEach(t => {
+              if (t.length > 1 && mTokens.has(t)) hits++;
+            });
+            if (hits > 0) {
+              score += Math.round((hits / queryTokens.length) * 60);
+            }
+          }
+
+          if (yearQuery && mYear && mYear === yearQuery) {
+            score += 35;
+          } else if (yearQuery && mYear && mYear !== yearQuery && score > 0) {
+            score -= 10;
+          }
+
+          return { movie: m, score };
+        });
+
+        return scored
+          .filter(item => item.score >= 25)
+          .sort((a, b) => b.score - a.score);
+      }
+
+      window.runSmartLinkDetect = function () {
+        const raw = document.getElementById("smartLinkRawTextarea")?.value || "";
+        if (!raw.trim()) {
+          alert("Pehle movie ka naam aur links paste karein.");
+          return;
+        }
+
+        const { titleLine, yearMatch, validGroups } = parseTitleYearAndGroups(raw);
+        detectedTitleQuery = titleLine;
+        detectedYearQuery = yearMatch;
+        parsedNewGroups = validGroups;
+
+        const matches = scoreMovieMatches(titleLine, yearMatch);
+        if (matches.length > 0) {
+          selectedTargetMovieId = matches[0].movie.id;
+        } else if (!selectedTargetMovieId && Array.isArray(appData.movies) && appData.movies.length > 0) {
+          selectedTargetMovieId = null;
+        }
+
+        renderSmartLinkPreview(matches);
+      };
+
+      window.selectSmartTargetMovie = function (movieId) {
+        selectedTargetMovieId = movieId;
+        const dd = document.getElementById("smartSearchResultsDropdown");
+        if (dd) dd.classList.add("hidden");
+
+        // Ensure links are parsed even if user picked movie via search first
+        const raw = document.getElementById("smartLinkRawTextarea")?.value || "";
+        if (raw.trim() && parsedNewGroups.length === 0) {
+          const parsed = parseTitleYearAndGroups(raw);
+          detectedTitleQuery = parsed.titleLine;
+          detectedYearQuery = parsed.yearMatch;
+          parsedNewGroups = parsed.validGroups;
+        }
+
+        const matches = scoreMovieMatches(detectedTitleQuery, detectedYearQuery);
+        renderSmartLinkPreview(matches);
+      };
+
+      window.renderSmartSearchDropdown = function () {
+        const input = document.getElementById("smartLinkManualSearch");
+        const dd = document.getElementById("smartSearchResultsDropdown");
+        if (!input || !dd) return;
+
+        const q = input.value.trim().toLowerCase();
+        const movies = Array.isArray(appData.movies) ? appData.movies : [];
+        const results = q
+          ? movies.filter(m =>
+              String(m.title || "").toLowerCase().includes(q) ||
+              String(m.year || "").toLowerCase().includes(q)
+            ).slice(0, 12)
+          : movies.slice(0, 8);
+
+        if (results.length === 0) {
+          dd.innerHTML = `<div class="p-3 text-xs text-gray-500">Koi matching content nahi mila.</div>`;
+        } else {
+          dd.innerHTML = results.map(m => `
+            <button type="button" onclick="selectSmartTargetMovie('${esc(m.id)}')" class="w-full text-left px-3 py-2 hover:bg-gray-800/90 flex items-center gap-2.5 cursor-pointer transition">
+              <img src="${esc(m.poster || m.backdrop)}" onerror="this.src='https://via.placeholder.com/40x56/14141c/ffffff?text=Img'" class="w-7 h-9 object-cover rounded bg-gray-900 flex-shrink-0" />
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-bold text-white truncate">${esc(m.title || "Untitled")}</div>
+                <div class="text-[10px] text-gray-400">${esc([m.year, (m.types || [])[0], (m.categories || []).join(", ")].filter(Boolean).join(" • "))}</div>
+              </div>
+              <span class="text-[10px] text-emerald-400 font-semibold flex-shrink-0">Select</span>
+            </button>
+          `).join("");
+        }
+        dd.classList.remove("hidden");
+      };
+
+      document.addEventListener("click", function (e) {
+        const dd = document.getElementById("smartSearchResultsDropdown");
+        const inp = document.getElementById("smartLinkManualSearch");
+        if (dd && inp && !dd.contains(e.target) && e.target !== inp) {
+          dd.classList.add("hidden");
+        }
+      });
+
+      function renderSmartLinkPreview(matches = []) {
+        const panel = document.getElementById("smartLinkPreviewPanel");
+        if (!panel) return;
+
+        const movies = Array.isArray(appData.movies) ? appData.movies : [];
+        const targetMovie = movies.find(m => m.id === selectedTargetMovieId) || null;
+        const totalNewLinks = parsedNewGroups.reduce((acc, g) => acc + g.links.length, 0);
+
+        const suggestions = matches
+          .filter(item => !targetMovie || item.movie.id !== targetMovie.id)
+          .slice(0, 4);
+
+        const suggestionsHtml = suggestions.length > 0 ? `
+          <div class="mt-2.5 pt-2 border-t border-gray-800">
+            <div class="text-[10px] font-bold uppercase tracking-wider text-amber-400 mb-1.5">
+              Same / Similar Name Suggestions:
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              ${suggestions.map(s => `
+                <button type="button" onclick="selectSmartTargetMovie('${esc(s.movie.id)}')" class="text-[11px] bg-amber-500/15 hover:bg-amber-500 text-amber-300 hover:text-black border border-amber-500/40 px-2 py-1 rounded-lg transition cursor-pointer">
+                  ${esc(s.movie.title)} ${s.movie.year ? `(${esc(s.movie.year)})` : ""}
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        ` : "";
+
+        if (!targetMovie) {
+          panel.innerHTML = `
+            <div class="space-y-2">
+              <div class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Auto-Detect Match Nahi Mila</span>
+              </div>
+              <p class="text-[11px] text-gray-400">
+                Detected Text: <b class="text-gray-200">${esc(detectedTitleQuery || "N/A")}</b> • Links Found: <b class="text-emerald-400">${totalNewLinks}</b>.
+                Left side wale <b>Search Box</b> se sahi movie select karein.
+              </p>
+              ${suggestionsHtml}
+            </div>
+          `;
+          return;
+        }
+
+        const existingGroupsCount = Array.isArray(targetMovie.downloadGroups) ? targetMovie.downloadGroups.length : 0;
+
+        const groupsPreviewHtml = parsedNewGroups.length > 0
+          ? parsedNewGroups.map(g => `
+              <div class="bg-[#14141c] border border-gray-800 rounded-lg px-2.5 py-1.5 text-[11px]">
+                <div class="flex items-center justify-between font-bold text-emerald-300">
+                  <span class="truncate">${esc(g.name)}</span>
+                  ${g.size ? `<span class="text-[10px] text-gray-400 ml-2 flex-shrink-0">${esc(g.size)}</span>` : ""}
+                </div>
+                <div class="text-[10px] text-gray-400 mt-0.5 truncate">
+                  ${g.links.map(l => esc(l.label)).join(" • ")} (${g.links.length} link${g.links.length > 1 ? "s" : ""})
+                </div>
+              </div>
+            `).join("")
+          : `<p class="text-[11px] text-red-400">Koi valid http/https link detect nahi hui.</p>`;
+
+        panel.innerHTML = `
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">Matched Target Content</span>
+              <span class="text-[10px] text-gray-400">Existing Groups: ${existingGroupsCount}</span>
+            </div>
+
+            <div class="flex items-center gap-3 bg-[#14141c] p-2.5 rounded-xl border border-emerald-500/30">
+              <img src="${esc(targetMovie.poster || targetMovie.backdrop)}" onerror="this.src='https://via.placeholder.com/60x84/14141c/ffffff?text=Img'" class="w-11 h-14 object-cover rounded-lg bg-gray-800 flex-shrink-0" />
+              <div class="min-w-0 flex-1">
+                <h4 class="font-extrabold text-xs sm:text-sm text-white line-clamp-1">${esc(targetMovie.title || "Untitled")}</h4>
+                <p class="text-[11px] text-gray-400 truncate">${esc([targetMovie.year, ...(targetMovie.types || []), ...(targetMovie.categories || [])].filter(Boolean).join(" • "))}</p>
+                <span class="inline-block mt-1 text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-semibold">
+                  +${parsedNewGroups.length} Group (${totalNewLinks} Links) Add Honge
+                </span>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 max-h-32 overflow-y-auto pr-0.5">
+              ${groupsPreviewHtml}
+            </div>
+
+            ${suggestionsHtml}
+          </div>
+
+          <div class="pt-3 mt-2 border-t border-gray-800 flex items-center justify-end gap-2">
+            <button type="button" onclick="confirmAndAttachSmartLinks()" ${parsedNewGroups.length === 0 ? "disabled" : ""}
+              class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-extrabold px-4 py-2 rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-pointer transition shadow-lg">
+              <i class="fa-solid fa-check-double"></i>
+              <span>Confirm &amp; Attach Links</span>
+            </button>
+          </div>
+        `;
+      }
+
+      window.confirmAndAttachSmartLinks = function () {
+        if (!selectedTargetMovieId || parsedNewGroups.length === 0) return;
+        const targetMovie = (appData.movies || []).find(m => m.id === selectedTargetMovieId);
+        if (!targetMovie) return;
+
+        if (!Array.isArray(targetMovie.downloadGroups)) {
+          targetMovie.downloadGroups = [];
+        }
+
+        parsedNewGroups.forEach(newGrp => {
+          const existingSameGrp = targetMovie.downloadGroups.find(
+            eg => String(eg.name || "").trim().toLowerCase() === String(newGrp.name || "").trim().toLowerCase() &&
+                  String(eg.size || "").trim().toLowerCase() === String(newGrp.size || "").trim().toLowerCase()
+          );
+
+          if (existingSameGrp) {
+            const existingUrls = new Set((existingSameGrp.links || []).map(l => l.url));
+            newGrp.links.forEach(nl => {
+              if (!existingUrls.has(nl.url)) {
+                existingSameGrp.links.push({ label: nl.label, url: nl.url });
+              }
+            });
+          } else {
+            targetMovie.downloadGroups.push({
+              name: newGrp.name,
+              size: newGrp.size,
+              links: newGrp.links.map(l => ({ label: l.label, url: l.url }))
+            });
+          }
+        });
+
+        saveDataToStorage();
+        const addedCount = parsedNewGroups.reduce((sum, g) => sum + g.links.length, 0);
+        const savedTitle = targetMovie.title;
+        clearSmartLinkUpdater();
+        alert(`Done! "${savedTitle}" mein ${addedCount} nayi link(s) add ho gayi hain aur live sync ho chuki hain.`);
+      };
+
+      window.clearSmartLinkUpdater = function () {
+        selectedTargetMovieId = null;
+        parsedNewGroups = [];
+        detectedTitleQuery = "";
+        detectedYearQuery = "";
+        const ta = document.getElementById("smartLinkRawTextarea");
+        const srch = document.getElementById("smartLinkManualSearch");
+        const panel = document.getElementById("smartLinkPreviewPanel");
+        if (ta) ta.value = "";
+        if (srch) srch.value = "";
+        if (panel) {
+          panel.innerHTML = `
+            <div class="text-xs text-gray-500 italic my-auto text-center py-6">
+              Text aur links paste karke <b>"Detect &amp; Preview"</b> par click karein, ya search bar se movie select karein.
+            </div>
+          `;
+        }
+      };
+
+      if (typeof openAdminModal === "function") {
+        const origOpenAdminModal = openAdminModal;
+        openAdminModal = function () {
+          injectSmartLinkUpdaterUI();
+          return origOpenAdminModal.apply(this, arguments);
+        };
+      }
+
+      injectSmartLinkUpdaterUI();
+    })();
+    // ================= QUALITY DROPDOWN FOLDERS (AUTO-DETECT + ADMIN OVERRIDE) =================
+    (function () {
+      const QUALITY_FOLDERS = [
+        { key: "2160p", label: "2160p / 4K", badgeClass: "bg-purple-600/20 text-purple-300 border-purple-500/40" },
+        { key: "1080p", label: "1080p FULL HD", badgeClass: "bg-red-600/20 text-red-300 border-red-500/40" },
+        { key: "720p", label: "720p HD", badgeClass: "bg-sky-600/20 text-sky-300 border-sky-500/40" },
+        { key: "480p", label: "480p", badgeClass: "bg-amber-600/20 text-amber-300 border-amber-500/40" },
+        { key: "others", label: "Others", badgeClass: "bg-gray-700/40 text-gray-300 border-gray-600/50" }
+      ];
+
+      function esc(str) {
+        if (typeof escapeHtml === "function") return escapeHtml(str ?? "");
+        return String(str ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      window.detectQualityFolderKey = function (group) {
+        if (group && group.qualityFolder && QUALITY_FOLDERS.some(f => f.key === group.qualityFolder)) {
+          return group.qualityFolder;
+        }
+        const rawText = [
+          group?.name || "",
+          ...(Array.isArray(group?.links) ? group.links.map(l => l.label || "") : [])
+        ].join(" ").toLowerCase();
+
+        if (/(?:\b2160p\b|\b4k\b|\buhd\b)/i.test(rawText)) return "2160p";
+        if (/(?:\b1080p\b|\bfull\s*hd\b|\bfhd\b)/i.test(rawText)) return "1080p";
+        if (/(?:\b720p\b|\bhd\b|\bhdrip\b|\bhdtv\b)/i.test(rawText)) return "720p";
+        if (/(?:\b480p\b|\bsd\b)/i.test(rawText)) return "480p";
+        return "others";
+      };
+
+      // 1. Admin Panel: Section below Download Groups Builder to inspect & manually reassign folders
+      function ensureAdminQualityFolderSection() {
+        const builder = document.getElementById("downloadGroupsBuilder");
+        if (!builder || document.getElementById("adminQualityFoldersPreviewBox")) return;
+
+        const sec = document.createElement("div");
+        sec.id = "adminQualityFoldersPreviewBox";
+        sec.className = "mt-4 pt-4 border-t border-gray-800 space-y-3";
+        sec.innerHTML = `
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h4 class="text-xs sm:text-sm font-bold text-amber-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-folder-tree"></i>
+                <span>Quality Dropdown Boxes (Auto-Detected + Manual Replace)</span>
+              </h4>
+              <p class="text-[11px] text-gray-400">
+                Upar add ki gayi links automatic apne quality folder mein set ho jaati hain. Kisi group ko doosre folder mein dalne ke liye dropdown badlein.
+              </p>
+            </div>
+          </div>
+          <div id="adminQualityFoldersGrid" class="space-y-2"></div>
+        `;
+        builder.parentElement.appendChild(sec);
+      }
+
+      window.setGroupManualFolder = function (groupIndex, folderKey) {
+        if (!Array.isArray(formDownloadGroups) || !formDownloadGroups[groupIndex]) return;
+        if (folderKey === "auto") {
+          delete formDownloadGroups[groupIndex].qualityFolder;
+        } else {
+          formDownloadGroups[groupIndex].qualityFolder = folderKey;
+        }
+        renderAdminQualityFoldersPreview();
+      };
+
+      function renderAdminQualityFoldersPreview() {
+        ensureAdminQualityFolderSection();
+        const grid = document.getElementById("adminQualityFoldersGrid");
+        if (!grid) return;
+
+        const groups = Array.isArray(formDownloadGroups) ? formDownloadGroups : [];
+        if (groups.length === 0) {
+          grid.innerHTML = `<p class="text-[11px] text-gray-500 italic">Koi link group add karte hi yahan 2160p/4K, 1080p FULL HD, 720p HD, 480p aur Others folders dikhne lagenge.</p>`;
+          return;
+        }
+
+        const bucketMap = { "2160p": [], "1080p": [], "720p": [], "480p": [], "others": [] };
+        groups.forEach((g, idx) => {
+          const key = detectQualityFolderKey(g);
+          bucketMap[key].push({ group: g, idx });
+        });
+
+        grid.innerHTML = QUALITY_FOLDERS.map(folder => {
+          const items = bucketMap[folder.key] || [];
+          const totalLinks = items.reduce((sum, it) => sum + ((it.group.links || []).length), 0);
+
+          const itemsHtml = items.length > 0
+            ? items.map(({ group, idx }) => `
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-[#101017] px-2.5 py-2 rounded-lg border border-gray-800">
+                  <div class="min-w-0 flex-1">
+                    <span class="text-xs font-semibold text-white truncate block">${esc(group.name || ("File Group #" + (idx + 1)))}</span>
+                    <span class="text-[10px] text-gray-400">${(group.links || []).length} Link(s) ${group.size ? "• " + esc(group.size) : ""} • ${group.qualityFolder ? "Manual" : "Auto"}</span>
+                  </div>
+                  <select onchange="setGroupManualFolder(${idx}, this.value)" title="Move to another dropdown box"
+                    class="bg-[#181822] border border-gray-700 text-gray-200 rounded-lg px-2 py-1 text-[11px] outline-none cursor-pointer">
+                    <option value="auto" ${!group.qualityFolder ? "selected" : ""}>Auto (${folder.label})</option>
+                    ${QUALITY_FOLDERS.map(opt => `<option value="${opt.key}" ${group.qualityFolder === opt.key ? "selected" : ""}>${opt.label}</option>`).join("")}
+                  </select>
+                </div>
+              `).join("")
+            : `<p class="text-[11px] text-gray-500 italic px-1">Is folder mein abhi koi link nahi hai.</p>`;
+
+          return `
+            <details ${items.length > 0 ? "open" : ""} class="bg-[#14141c] border border-gray-800 rounded-xl overflow-hidden">
+              <summary class="px-3 py-2.5 flex items-center justify-between cursor-pointer select-none hover:bg-gray-800/40 transition">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-folder text-xs text-amber-400"></i>
+                  <span class="text-xs font-bold text-gray-200">${folder.label}</span>
+                </div>
+                <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${folder.badgeClass}">
+                  ${totalLinks} Link${totalLinks === 1 ? "" : "s"} (${items.length} File${items.length === 1 ? "" : "s"})
+                </span>
+              </summary>
+              <div class="p-2.5 pt-1.5 space-y-1.5 border-t border-gray-800/80">
+                ${itemsHtml}
+              </div>
+            </details>
+          `;
+        }).join("");
+      }
+
+      // Hook into renderDownloadGroupsBuilder & updateGroupField so Admin preview updates live
+      if (typeof renderDownloadGroupsBuilder === "function") {
+        const origRenderBuilder = renderDownloadGroupsBuilder;
+        renderDownloadGroupsBuilder = function () {
+          const res = origRenderBuilder.apply(this, arguments);
+          renderAdminQualityFoldersPreview();
+          return res;
+        };
+      }
+
+      if (typeof updateGroupField === "function") {
+        const origUpdateField = updateGroupField;
+        updateGroupField = function () {
+          const res = origUpdateField.apply(this, arguments);
+          renderAdminQualityFoldersPreview();
+          return res;
+        };
+      }
+
+      // Preserve manual qualityFolder selection when saveMovie runs
+      if (typeof saveMovie === "function") {
+        const origSaveMovie = saveMovie;
+        saveMovie = function (e) {
+          const manualOverrides = (Array.isArray(formDownloadGroups) ? formDownloadGroups : []).map(g => g.qualityFolder || null);
+          const editId = document.getElementById("editMovieId")?.value;
+          const res = origSaveMovie.call(this, e);
+          const target = editId
+            ? (appData.movies || []).find(m => m.id === editId)
+            : (appData.movies || [])[0];
+          if (target && Array.isArray(target.downloadGroups)) {
+            target.downloadGroups.forEach((grp, i) => {
+              if (manualOverrides[i]) grp.qualityFolder = manualOverrides[i];
+            });
+            saveDataToStorage();
+          }
+          return res;
+        };
+      }
+
+      // 2. Public Viewer Modal: Render Quality Dropdown Accordions with Link Counts
+      window.toggleViewerQualityBox = function (boxId) {
+        const body = document.getElementById(boxId);
+        const icon = document.getElementById(boxId + "_icon");
+        if (!body) return;
+        const isHidden = body.classList.contains("hidden");
+        if (isHidden) {
+          body.classList.remove("hidden");
+          if (icon) icon.style.transform = "rotate(180deg)";
+        } else {
+          body.classList.add("hidden");
+          if (icon) icon.style.transform = "rotate(0deg)";
+        }
+      };
+
+      if (typeof openPlayerModal === "function") {
+        const origOpenPlayerModal = openPlayerModal;
+        openPlayerModal = function (id, ...rest) {
+          const res = origOpenPlayerModal.call(this, id, ...rest);
+
+          const movie = (appData.movies || []).find(m => m.id === id);
+          const downloadWrapper = document.getElementById("modalDownloadWrapper");
+          const groupsContainer = document.getElementById("modalDownloadGroups");
+          if (!movie || !downloadWrapper || !groupsContainer) return res;
+
+          let groups = Array.isArray(movie.downloadGroups) ? movie.downloadGroups : [];
+          if (groups.length === 0 && movie.watchLink) {
+            groups = [{ name: movie.title || "Download / Watch", size: "", links: [{ label: "Watch / Download", url: movie.watchLink }] }];
+          }
+
+          if (groups.length === 0) return res;
+
+          const buckets = { "2160p": [], "1080p": [], "720p": [], "480p": [], "others": [] };
+          groups.forEach(g => {
+            const key = detectQualityFolderKey(g);
+            buckets[key].push(g);
+          });
+
+          const activeFolders = QUALITY_FOLDERS.filter(f => (buckets[f.key] || []).length > 0);
+          downloadWrapper.classList.remove("hidden");
+
+          groupsContainer.innerHTML = activeFolders.map((folder, fIdx) => {
+            const folderGroups = buckets[folder.key];
+            const totalLinksCount = folderGroups.reduce((sum, g) => sum + ((g.links || []).length), 0);
+            const boxId = "viewerQBox_" + folder.key + "_" + fIdx;
+
+            const innerCardsHtml = folderGroups.map(g => `
+              <div class="bg-[#101017]/90 border border-gray-800/90 rounded-xl p-3 space-y-2">
+                <div class="flex flex-wrap items-center gap-2">
+                  ${g.name ? `<span class="text-xs sm:text-sm font-bold leading-snug text-gray-100">${esc(g.name)}</span>` : ""}
+                  ${g.size ? `<span class="bg-red-600 text-white text-[11px] font-extrabold px-2 py-0.5 rounded-sm tracking-wide inline-block">${esc(g.size)}</span>` : ""}
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  ${(g.links || []).map(lnk => `
+                    <a href="${esc(lnk.url || "#")}" target="_blank" rel="noopener noreferrer"
+                      class="brand-bg text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-lg inline-flex items-center gap-2 shadow transition">
+                      <i class="fa-solid fa-download"></i>
+                      <span>${esc(lnk.label || "Download")}</span>
+                    </a>
+                  `).join("")}
+                </div>
+              </div>
+            `).join("");
+
+            return `
+              <div class="theme-card border border-gray-700/80 rounded-xl overflow-hidden shadow-md">
+                <button type="button" onclick="toggleViewerQualityBox('${boxId}')"
+                  class="w-full px-4 py-3 flex items-center justify-between gap-3 text-left hover:bg-gray-500/10 transition cursor-pointer">
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-2.5 h-2.5 rounded-full brand-bg flex-shrink-0"></span>
+                    <span class="font-extrabold text-sm sm:text-base tracking-wide truncate">${folder.label}</span>
+                  </div>
+                  <div class="flex items-center gap-2.5 flex-shrink-0">
+                    <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${folder.badgeClass}">
+                      ${totalLinksCount} Link${totalLinksCount === 1 ? "" : "s"}
+                    </span>
+                    <i id="${boxId}_icon" class="fa-solid fa-chevron-down text-xs text-gray-400 transition-transform duration-200"></i>
+                  </div>
+                </button>
+                <div id="${boxId}" class="hidden px-3.5 pb-3.5 pt-2 space-y-2.5 border-t border-gray-800/80">
+                  ${innerCardsHtml}
+                </div>
+              </div>
+            `;
+          }).join("");
+
+          return res;
+        };
+      }
+
+      renderAdminQualityFoldersPreview();
+    })();
     // Initialize
     initColorTheme();
     refreshAllUI();
